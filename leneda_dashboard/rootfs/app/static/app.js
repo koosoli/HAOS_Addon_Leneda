@@ -172,26 +172,35 @@ async function refreshData() {
 // Update Dashboard Statistics
 async function updateDashboardStats() {
     if (!config.metering_points || config.metering_points.length === 0) {
+        showStatus('No metering points configured', 'warning');
         return;
     }
     
     const meteringPoint = config.metering_points[0].code;
     
     try {
-        // Get today's data
-        const today = new Date();
-        const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-        const response = await fetch(`/api/aggregated-data?metering_point=${meteringPoint}&obisCode=1-1:1.29.0&start_date=${formatDate(startOfDay)}&end_date=${formatDate(today)}&aggregation_level=Infinite`);
+        // IMPORTANT: Leneda data is only available for PREVIOUS days (not today)
+        // Get yesterday's date range
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStart = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
+        const yesterdayEnd = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59);
+        
+        // Get yesterday's consumption
+        const response = await fetch(`/api/aggregated-data?metering_point=${meteringPoint}&obis_code=1-1:1.29.0&start_date=${formatDate(yesterdayStart)}&end_date=${formatDate(yesterdayEnd)}&aggregation_level=Infinite`);
         
         if (response.ok) {
             const data = await response.json();
-            const todayUsage = data.aggregatedTimeSeries?.[0]?.value || 0;
-            document.getElementById('todayUsage').textContent = `${todayUsage.toFixed(2)} kWh`;
+            const yesterdayUsage = data.aggregatedTimeSeries?.[0]?.value || 0;
+            document.getElementById('todayUsage').textContent = `${yesterdayUsage.toFixed(2)} kWh`;
+            // Update label to show it's yesterday's data
+            document.querySelector('#todayUsage').previousElementSibling.textContent = 'Yesterday\'s Usage';
         }
         
-        // Get week data
-        const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-        const weekResponse = await fetch(`/api/aggregated-data?metering_point=${meteringPoint}&obisCode=1-1:1.29.0&start_date=${formatDate(weekAgo)}&end_date=${formatDate(today)}&aggregation_level=Infinite`);
+        // Get last 7 days data
+        const weekAgo = new Date(yesterdayStart);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        const weekResponse = await fetch(`/api/aggregated-data?metering_point=${meteringPoint}&obis_code=1-1:1.29.0&start_date=${formatDate(weekAgo)}&end_date=${formatDate(yesterdayEnd)}&aggregation_level=Infinite`);
         
         if (weekResponse.ok) {
             const weekData = await weekResponse.json();
@@ -199,9 +208,10 @@ async function updateDashboardStats() {
             document.getElementById('weekConsumption').textContent = `${weekUsage.toFixed(2)} kWh`;
         }
         
-        // Get month data
-        const monthAgo = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
-        const monthResponse = await fetch(`/api/aggregated-data?metering_point=${meteringPoint}&obisCode=1-1:1.29.0&start_date=${formatDate(monthAgo)}&end_date=${formatDate(today)}&aggregation_level=Infinite`);
+        // Get last 30 days data
+        const monthAgo = new Date(yesterdayStart);
+        monthAgo.setDate(monthAgo.getDate() - 30);
+        const monthResponse = await fetch(`/api/aggregated-data?metering_point=${meteringPoint}&obis_code=1-1:1.29.0&start_date=${formatDate(monthAgo)}&end_date=${formatDate(yesterdayEnd)}&aggregation_level=Infinite`);
         
         if (monthResponse.ok) {
             const monthData = await monthResponse.json();
@@ -214,17 +224,22 @@ async function updateDashboardStats() {
             document.getElementById('monthCost').textContent = `€${estimatedCost.toFixed(2)}`;
         }
         
-        // Try to get production data if available
-        const productionResponse = await fetch(`/api/aggregated-data?metering_point=${meteringPoint}&obisCode=1-1:2.29.0&start_date=${formatDate(startOfDay)}&end_date=${formatDate(today)}&aggregation_level=Infinite`);
+        // Try to get production data if available (solar)
+        const productionResponse = await fetch(`/api/aggregated-data?metering_point=${meteringPoint}&obis_code=1-1:2.29.0&start_date=${formatDate(yesterdayStart)}&end_date=${formatDate(yesterdayEnd)}&aggregation_level=Infinite`);
         
         if (productionResponse.ok) {
             const prodData = await productionResponse.json();
-            const todayProduction = prodData.aggregatedTimeSeries?.[0]?.value || 0;
-            document.getElementById('solarProduction').textContent = `${todayProduction.toFixed(2)} kWh`;
+            const yesterdayProduction = prodData.aggregatedTimeSeries?.[0]?.value || 0;
+            document.getElementById('solarProduction').textContent = `${yesterdayProduction.toFixed(2)} kWh`;
+            document.querySelector('#solarProduction').previousElementSibling.textContent = 'Yesterday\'s Production';
+        } else {
+            // No solar production available
+            document.getElementById('solarProduction').textContent = 'N/A';
         }
         
     } catch (error) {
         console.error('Error updating dashboard stats:', error);
+        showStatus('Error fetching data. Check configuration.', 'error');
     }
 }
 
@@ -367,38 +382,56 @@ function initializeCharts() {
     });
 }
 
-// Update Live Chart
+// Update Live Chart (Shows yesterday's 15-minute intervals)
 async function updateLiveChart() {
     if (!config.metering_points || config.metering_points.length === 0) {
         return;
     }
     
     const meteringPoint = config.metering_points[0].code;
-    const now = new Date();
-    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+    
+    // IMPORTANT: Leneda only provides data from PREVIOUS days
+    // Fetch yesterday's 15-minute interval data
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStart = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0);
+    const yesterdayEnd = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59);
     
     try {
-        const response = await fetch(`/api/metering-data?metering_point=${meteringPoint}&obisCode=1-1:1.29.0&start_date=${oneHourAgo.toISOString()}&end_date=${now.toISOString()}`);
+        const response = await fetch(`/api/metering-data?metering_point=${meteringPoint}&obis_code=1-1:1.29.0&start_date=${yesterdayStart.toISOString()}&end_date=${yesterdayEnd.toISOString()}`);
         
         if (response.ok) {
             const data = await response.json();
             const items = data.items || [];
+            
+            if (items.length === 0) {
+                showStatus('No data available for yesterday. Data appears 1 day later.', 'warning');
+                return;
+            }
             
             const labels = items.map(item => new Date(item.startedAt));
             const values = items.map(item => item.value);
             
             charts.live.data.labels = labels;
             charts.live.data.datasets[0].data = values;
+            charts.live.data.datasets[0].label = `Yesterday's Power (kW) - 15-min intervals`;
             charts.live.update();
             
-            // Update current consumption
+            // Update peak consumption from yesterday
             if (values.length > 0) {
-                const currentValue = values[values.length - 1];
-                document.getElementById('currentConsumption').textContent = `${currentValue.toFixed(2)} kW`;
+                const peakValue = Math.max(...values);
+                const avgValue = values.reduce((a, b) => a + b, 0) / values.length;
+                document.getElementById('currentConsumption').textContent = `${peakValue.toFixed(2)} kW (peak)`;
+                // Update label
+                document.querySelector('#currentConsumption').previousElementSibling.textContent = 'Yesterday\'s Peak';
             }
+        } else {
+            _LOGGER.error('Failed to fetch metering data');
+            showStatus('No data available. Check configuration.', 'error');
         }
     } catch (error) {
         console.error('Error updating live chart:', error);
+        showStatus('Error fetching data from Leneda API', 'error');
     }
 }
 
@@ -409,46 +442,74 @@ async function updateChartData(period) {
     }
     
     const meteringPoint = config.metering_points[0].code;
-    const now = new Date();
+    
+    // IMPORTANT: Leneda data ends YESTERDAY (not today)
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const endDate = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59);
+    
     let startDate;
     let aggregationLevel;
     
     switch (period) {
         case 'day':
-            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            // Yesterday's hourly data
+            startDate = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0);
             aggregationLevel = 'Hour';
             break;
         case 'week':
-            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            // Last 7 days (daily)
+            startDate = new Date(endDate);
+            startDate.setDate(startDate.getDate() - 7);
             aggregationLevel = 'Day';
             break;
         case 'month':
-            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            // Last 30 days (daily)
+            startDate = new Date(endDate);
+            startDate.setDate(startDate.getDate() - 30);
             aggregationLevel = 'Day';
             break;
         case 'year':
-            startDate = new Date(now.getFullYear(), 0, 1);
+            // Last 12 months (monthly)
+            startDate = new Date(endDate);
+            startDate.setMonth(startDate.getMonth() - 12);
             aggregationLevel = 'Month';
             break;
         default:
-            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            startDate = new Date(endDate);
+            startDate.setDate(startDate.getDate() - 7);
             aggregationLevel = 'Day';
     }
     
     try {
-        const response = await fetch(`/api/aggregated-data?metering_point=${meteringPoint}&obisCode=1-1:1.29.0&start_date=${formatDate(startDate)}&end_date=${formatDate(now)}&aggregation_level=${aggregationLevel}`);
+        // Get consumption data
+        const consumptionResponse = await fetch(`/api/aggregated-data?metering_point=${meteringPoint}&obis_code=1-1:1.29.0&start_date=${formatDate(startDate)}&end_date=${formatDate(endDate)}&aggregation_level=${aggregationLevel}`);
         
-        if (response.ok) {
-            const data = await response.json();
-            const items = data.aggregatedTimeSeries || [];
-            
-            const labels = items.map(item => formatChartDate(new Date(item.startedAt), period));
-            const values = items.map(item => item.value);
-            
-            charts.energy.data.labels = labels;
-            charts.energy.data.datasets[0].data = values;
-            charts.energy.update();
+        let consumptionItems = [];
+        if (consumptionResponse.ok) {
+            const data = await consumptionResponse.json();
+            consumptionItems = data.aggregatedTimeSeries || [];
         }
+        
+        // Try to get production data
+        const productionResponse = await fetch(`/api/aggregated-data?metering_point=${meteringPoint}&obis_code=1-1:2.29.0&start_date=${formatDate(startDate)}&end_date=${formatDate(endDate)}&aggregation_level=${aggregationLevel}`);
+        
+        let productionItems = [];
+        if (productionResponse.ok) {
+            const prodData = await productionResponse.json();
+            productionItems = prodData.aggregatedTimeSeries || [];
+        }
+        
+        // Update chart
+        const labels = consumptionItems.map(item => formatChartDate(new Date(item.startedAt), period));
+        const consumptionValues = consumptionItems.map(item => item.value);
+        const productionValues = productionItems.map(item => item.value);
+        
+        charts.energy.data.labels = labels;
+        charts.energy.data.datasets[0].data = consumptionValues;
+        charts.energy.data.datasets[1].data = productionValues.length > 0 ? productionValues : [];
+        charts.energy.update();
+        
     } catch (error) {
         console.error('Error updating chart data:', error);
     }
@@ -462,15 +523,23 @@ async function calculateInvoice() {
     }
     
     const meteringPoint = config.metering_points[0].code;
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    
+    // Calculate for PREVIOUS MONTH (complete data)
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    // Get first day of previous month
+    const startOfLastMonth = new Date(yesterday.getFullYear(), yesterday.getMonth() - 1, 1);
+    // Get last day of previous month
+    const endOfLastMonth = new Date(yesterday.getFullYear(), yesterday.getMonth(), 0, 23, 59, 59);
     
     try {
-        const response = await fetch(`/api/calculate-invoice?metering_point=${meteringPoint}&start_date=${formatDate(startOfMonth)}&end_date=${formatDate(now)}`);
+        const response = await fetch(`/api/calculate-invoice?metering_point=${meteringPoint}&start_date=${formatDate(startOfLastMonth)}&end_date=${formatDate(endOfLastMonth)}`);
         
         if (response.ok) {
             const invoice = await response.json();
             displayInvoice(invoice);
+            showStatus('Invoice calculated for previous month', 'success');
         } else {
             showStatus('Failed to calculate invoice', 'error');
         }

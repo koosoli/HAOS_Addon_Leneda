@@ -123,6 +123,12 @@ body {
     border: 1px solid var(--success);
 }
 
+.status-banner.warning {
+    background: rgba(255, 183, 3, 0.1);
+    color: var(--warning);
+    border: 1px solid var(--warning);
+}
+
 .status-banner.error {
     background: rgba(239, 71, 111, 0.1);
     color: var(--danger);
@@ -131,6 +137,24 @@ body {
 
 .status-banner.hidden {
     display: none;
+}
+
+/* Info Banner */
+.info-banner {
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    background: rgba(0, 180, 216, 0.1);
+    border: 1px solid var(--accent-primary);
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.info-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
 }
 
 /* Tabs */
