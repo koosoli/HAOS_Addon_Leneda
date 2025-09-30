@@ -51,16 +51,21 @@ def load_config():
 
 
 def make_api_request(url, headers=None, method='GET', data=None):
-    """Make HTTP request using urllib"""
+    """Make HTTP request using urllib with robust error handling"""
     try:
         req = Request(url, headers=headers or {}, method=method)
         if data:
             req.data = json.dumps(data).encode('utf-8')
         
-        with urlopen(req, timeout=30) as response:
+        # Use shorter timeout to avoid hanging
+        with urlopen(req, timeout=10) as response:
             return json.loads(response.read().decode('utf-8'))
-    except (URLError, HTTPError) as e:
-        logger.error(f"Request error for {url}: {e}")
+    except URLError as e:
+        # Log but don't crash on DNS/network errors
+        logger.warning(f"Network error for {url}: {e}")
+        return None
+    except HTTPError as e:
+        logger.error(f"HTTP error for {url}: {e.code} - {e.reason}")
         return None
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
@@ -108,9 +113,10 @@ class LenedaHandler(BaseHTTPRequestHandler):
         
         # API endpoints
         if path == '/api/health':
+            # Simple health check - no external dependencies
             self.send_json({
                 'status': 'healthy',
-                'version': '0.1.0',
+                'version': '1.0.0',
                 'timestamp': datetime.now().isoformat()
             })
         
