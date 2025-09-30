@@ -1,12 +1,7 @@
-ARG BUILD_FROM
-FROM $BUILD_FROM
+FROM python:3.11-alpine
 
-# Install Python and pip
-RUN apk add --no-cache \
-    python3 \
-    py3-pip \
-    py3-flask \
-    py3-requests
+# Install Flask and Requests
+RUN pip3 install --no-cache-dir --index-url https://pypi.org/simple flask requests
 
 # Copy application files
 COPY rootfs/app /app
