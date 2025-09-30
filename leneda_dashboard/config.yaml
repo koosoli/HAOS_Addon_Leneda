@@ -1,0 +1,76 @@
+name: "Leneda Energy Dashboard"
+version: "0.1.0"
+slug: leneda_dashboard
+description: "Advanced energy dashboard for Leneda smart meters with invoice calculations and 15-minute interval visualization"
+url: "https://github.com/koosoli/HAOS_Addon_Leneda"
+arch:
+  - aarch64
+  - amd64
+  - armhf
+  - armv7
+  - i386
+startup: application
+boot: auto
+ingress: true
+ingress_port: 8099
+panel_icon: mdi:lightning-bolt
+panel_title: "Leneda Energy"
+init: false
+ports:
+  8099/tcp: null
+ports_description:
+  8099/tcp: "Web interface (managed by Ingress)"
+options:
+  api_key: ""
+  energy_id: ""
+  metering_points:
+    - code: "LU000000000000000000000000000000"
+      name: "Main Meter"
+      type: "consumption"
+  billing:
+    energy_supplier_name: "Enovos"
+    energy_fixed_fee_monthly: 1.50
+    energy_variable_rate_per_kwh: 0.1500
+    network_operator_name: "Creos"
+    network_metering_fee_monthly: 5.90
+    network_power_reference_fee_monthly: 19.27
+    network_variable_rate_per_kwh: 0.0759
+    exceedance_rate_per_kwh: 0.1139
+    compensation_fund_rate_per_kwh: -0.0376
+    electricity_tax_per_kwh: 0.0010
+    vat_rate: 0.08
+    reference_power_kw: 12.0
+    currency: "EUR"
+  display:
+    theme: "dark"
+    language: "en"
+    update_interval_seconds: 300
+    default_date_range: "week"
+    show_gas_data: false
+schema:
+  api_key: "password"
+  energy_id: "str"
+  metering_points:
+    - code: "str"
+      name: "str"
+      type: "list(consumption|production|both)"
+  billing:
+    energy_supplier_name: "str?"
+    energy_fixed_fee_monthly: "float(0,1000)"
+    energy_variable_rate_per_kwh: "float(0,2)"
+    network_operator_name: "str?"
+    network_metering_fee_monthly: "float(0,100)"
+    network_power_reference_fee_monthly: "float(0,300)"
+    network_variable_rate_per_kwh: "float(0,1)"
+    exceedance_rate_per_kwh: "float(0,1)"
+    compensation_fund_rate_per_kwh: "float?"
+    electricity_tax_per_kwh: "float(0,0.1)"
+    vat_rate: "float(0,0.5)"
+    reference_power_kw: "float(1,100)"
+    currency: "list(EUR|USD|CHF)?"
+  display:
+    theme: "list(dark|light|auto)?"
+    language: "list(en|de|fr|lb)?"
+    update_interval_seconds: "int(60,3600)?"
+    default_date_range: "list(day|week|month|year)?"
+    show_gas_data: "bool?"
