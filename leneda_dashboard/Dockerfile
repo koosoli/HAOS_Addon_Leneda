@@ -1,7 +1,12 @@
-FROM python:3.11-alpine
+ARG BUILD_FROM
+FROM $BUILD_FROM
 
-# Install minimal dependencies
-RUN pip install --no-cache-dir flask requests
+# Install Python and pip
+RUN apk add --no-cache \
+    python3 \
+    py3-pip \
+    py3-flask \
+    py3-requests
 
 # Copy application files
 COPY rootfs/app /app
