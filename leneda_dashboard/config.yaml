@@ -1,5 +1,5 @@
 name: "Leneda Energy Dashboard"
-version: "0.1.0"
+version: "1.0.0"
 slug: leneda_dashboard
 description: "Advanced energy dashboard for Leneda smart meters with invoice calculations and 15-minute interval visualization"
 url: "https://github.com/koosoli/HAOS_Addon_Leneda"

@@ -1,5 +1,5 @@
 // Leneda Energy Dashboard - JavaScript
-// Version: 0.1.0
+// Version: 1.0.0
 
 let config = {};
 let charts = {};
@@ -379,7 +379,8 @@ function initializeCharts() {
     });
 }
 
-// Update Live Chart (Shows yesterday's 15-minute intervals)
+// Update Yesterday's Chart (Shows yesterday's 15-minute intervals)
+// Note: Leneda does NOT provide live/real-time data - only historical data
 async function updateLiveChart() {
     if (!config.metering_points || config.metering_points.length === 0) {
         return;
@@ -425,7 +426,7 @@ async function updateLiveChart() {
             showStatus('No data available. Check configuration.', 'error');
         }
     } catch (error) {
-        console.error('Error updating live chart:', error);
+        console.error('Error updating yesterday\'s chart:', error);
         showStatus('Error fetching data from Leneda API', 'error');
     }
 }
