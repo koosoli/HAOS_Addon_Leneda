@@ -1,7 +1,6 @@
 FROM python:3.11-alpine
 
-# Install Flask and Requests
-RUN pip3 install --no-cache-dir --index-url https://pypi.org/simple flask requests
+# No additional packages needed - Python 3 has http.server and urllib built-in
 
 # Copy application files
 COPY rootfs/app /app
