@@ -193,8 +193,6 @@ async function updateDashboardStats() {
             const data = await response.json();
             const yesterdayUsage = data.aggregatedTimeSeries?.[0]?.value || 0;
             document.getElementById('todayUsage').textContent = `${yesterdayUsage.toFixed(2)} kWh`;
-            // Update label to show it's yesterday's data
-            document.querySelector('#todayUsage').previousElementSibling.textContent = 'Yesterday\'s Usage';
         }
         
         // Get last 7 days data
@@ -231,7 +229,6 @@ async function updateDashboardStats() {
             const prodData = await productionResponse.json();
             const yesterdayProduction = prodData.aggregatedTimeSeries?.[0]?.value || 0;
             document.getElementById('solarProduction').textContent = `${yesterdayProduction.toFixed(2)} kWh`;
-            document.querySelector('#solarProduction').previousElementSibling.textContent = 'Yesterday\'s Production';
         } else {
             // No solar production available
             document.getElementById('solarProduction').textContent = 'N/A';
@@ -421,9 +418,7 @@ async function updateLiveChart() {
             if (values.length > 0) {
                 const peakValue = Math.max(...values);
                 const avgValue = values.reduce((a, b) => a + b, 0) / values.length;
-                document.getElementById('currentConsumption').textContent = `${peakValue.toFixed(2)} kW (peak)`;
-                // Update label
-                document.querySelector('#currentConsumption').previousElementSibling.textContent = 'Yesterday\'s Peak';
+                document.getElementById('currentConsumption').textContent = `${peakValue.toFixed(2)} kW`;
             }
         } else {
             _LOGGER.error('Failed to fetch metering data');
