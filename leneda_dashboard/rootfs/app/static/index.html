@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leneda Energy Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dark-theme">
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1>⚡ Leneda Energy Dashboard</h1>
+                <div class="header-actions">
+                    <button id="refreshBtn" class="btn btn-icon" title="Refresh Data">
+                        <span>🔄</span>
+                    </button>
+                    <button id="themeToggle" class="btn btn-icon" title="Toggle Theme">
+                        <span id="themeIcon">🌙</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Status Banner -->
+        <div id="statusBanner" class="status-banner hidden">
+            <span id="statusMessage"></span>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <nav class="tabs">
+            <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+            <button class="tab-btn" data-tab="charts">Charts</button>
+            <button class="tab-btn" data-tab="invoice">Invoice</button>
+            <button class="tab-btn" data-tab="settings">Settings</button>
+        </nav>
+
+        <!-- Tab Content -->
+        <main class="content">
+            <!-- Dashboard Tab -->
+            <div id="dashboard" class="tab-content active">
+                <div class="grid-3">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Current Consumption</h3>
+                            <span class="icon">📊</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="stat-value" id="currentConsumption">-- kW</div>
+                            <div class="stat-label">Right Now</div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Today's Usage</h3>
+                            <span class="icon">📅</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="stat-value" id="todayUsage">-- kWh</div>
+                            <div class="stat-label">Total Consumed</div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Solar Production</h3>
+                            <span class="icon">☀️</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="stat-value" id="solarProduction">-- kWh</div>
+                            <div class="stat-label">Today</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mt-20">
+                    <div class="card-header">
+                        <h3>Live Power Flow</h3>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="liveChart" height="100"></canvas>
+                    </div>
+                </div>
+
+                <div class="grid-2 mt-20">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>This Week</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="stat-row">
+                                <span>Consumption</span>
+                                <span id="weekConsumption">-- kWh</span>
+                            </div>
+                            <div class="stat-row">
+                                <span>Production</span>
+                                <span id="weekProduction">-- kWh</span>
+                            </div>
+                            <div class="stat-row">
+                                <span>Self-consumed</span>
+                                <span id="weekSelfConsumed">-- kWh</span>
+                            </div>
+                            <div class="stat-row">
+                                <span>Exported</span>
+                                <span id="weekExported">-- kWh</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>This Month</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="stat-row">
+                                <span>Consumption</span>
+                                <span id="monthConsumption">-- kWh</span>
+                            </div>
+                            <div class="stat-row">
+                                <span>Production</span>
+                                <span id="monthProduction">-- kWh</span>
+                            </div>
+                            <div class="stat-row">
+                                <span>Estimated Cost</span>
+                                <span id="monthCost">-- EUR</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Tab -->
+            <div id="charts" class="tab-content">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Energy Analysis</h3>
+                        <div class="date-selector">
+                            <select id="chartPeriod" class="select">
+                                <option value="day">Today</option>
+                                <option value="week" selected>This Week</option>
+                                <option value="month">This Month</option>
+                                <option value="year">This Year</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="energyChart" height="80"></canvas>
+                    </div>
+                </div>
+
+                <div class="grid-2 mt-20">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Consumption Distribution</h3>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="distributionChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>15-Minute Intervals</h3>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="intervalChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Invoice Tab -->
+            <div id="invoice" class="tab-content">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Current Month Invoice</h3>
+                        <button id="calculateInvoiceBtn" class="btn btn-primary">Calculate</button>
+                    </div>
+                    <div class="card-body">
+                        <div id="invoiceContent">
+                            <p class="text-center text-muted">Click "Calculate" to generate invoice</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mt-20">
+                    <div class="card-header">
+                        <h3>Previous Invoices</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="previousInvoices">
+                            <p class="text-muted">No previous invoices available</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Tab -->
+            <div id="settings" class="tab-content">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Configuration Status</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="stat-row">
+                            <span>API Key</span>
+                            <span id="apiKeyStatus">❌ Not Configured</span>
+                        </div>
+                        <div class="stat-row">
+                            <span>Energy ID</span>
+                            <span id="energyIdStatus">❌ Not Configured</span>
+                        </div>
+                        <div class="stat-row">
+                            <span>Metering Points</span>
+                            <span id="meteringPointsCount">0</span>
+                        </div>
+                        <div class="alert alert-info mt-20">
+                            <strong>ℹ️ Configuration</strong><br>
+                            To configure this addon, go to:<br>
+                            <em>Settings → Add-ons → Leneda Energy Dashboard → Configuration</em>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mt-20">
+                    <div class="card-header">
+                        <h3>Billing Settings</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="billingSettings">
+                            Loading...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Leneda Energy Dashboard v0.1.0 | Made by Olivier Koos</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

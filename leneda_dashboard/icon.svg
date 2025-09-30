@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#1a1a2e" rx="64"/>
+  <g transform="translate(256,256)">
+    <!-- Lightning bolt -->
+    <path fill="#00b4d8" d="M-60,-120 L20,-20 L-20,-20 L60,120 L-20,20 L20,20 Z"/>
+    <!-- Energy waves -->
+    <circle cx="0" cy="0" r="140" fill="none" stroke="#06ffa5" stroke-width="8" opacity="0.3"/>
+    <circle cx="0" cy="0" r="110" fill="none" stroke="#00b4d8" stroke-width="6" opacity="0.4"/>
+    <circle cx="0" cy="0" r="80" fill="none" stroke="#0077b6" stroke-width="4" opacity="0.5"/>
+  </g>
+  <!-- Text -->
+  <text x="256" y="420" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="#eaeaea" text-anchor="middle">LENEDA</text>
+</svg>
