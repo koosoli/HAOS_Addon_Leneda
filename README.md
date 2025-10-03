@@ -11,7 +11,7 @@ Advanced energy monitoring dashboard for Leneda smart meters in Luxembourg.
 
 ## Features
 
-- ⚡ **Real-time Monitoring**: View energy consumption and solar production with 15-minute interval precision
+- ⚡ **Energy Monitoring**: View energy consumption and solar production with 15-minute interval precision
 - 📊 **Interactive Charts**: Multiple chart types powered by Chart.js for comprehensive data visualization
 - 💰 **Invoice Calculator**: Automatic cost calculation based on Luxembourg energy tariffs
 - 🌙 **Dark Mode**: Beautiful dark theme optimized for Home Assistant (with light mode toggle)
