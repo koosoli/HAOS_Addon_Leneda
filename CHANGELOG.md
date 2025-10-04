@@ -5,7 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.0] - 2025-01-XX
+## [1.0.2] - 2025-10-04
+
+### Fixed
+- **Critical**: Fixed URL encoding for OBIS codes and metering point parameters (was causing API failures)
+- **Critical**: Fixed date formatting issues - now properly requests yesterday's data instead of today's (Leneda has 1-day delay)
+- Enhanced error handling and logging for API requests to help with debugging
+- Added support for multiple config file paths (development and production)
+- Improved HTTP headers for API requests (added Accept header)
+- Fixed frontend JavaScript logging error (`_LOGGER` -> `console.error`)
+
+### Added
+- Comprehensive debug logging for API requests and responses
+- Test script (`test_leneda_api.py`) for independent credential testing
+- Debugging guide (`DEBUG_GUIDE.md`) with troubleshooting steps
+- Better error messages with specific details about failures
+
+### Changed
+- Default behavior now requests yesterday's data (most recent available from Leneda)
+- Enhanced configuration loading with fallback paths
+- Improved API request timeout (10s -> 15s)
+
+### Notes
+- **Important**: Leneda provides historical data with 1-day delay, not real-time data
+- If you just configured the addon today, data will appear tomorrow
+- This version significantly improves reliability of API connections
+
+## [1.0.1] - 2025-01-XX (Previous Release)
+
+### Added
+- Initial stable release of Leneda Energy Dashboard
 
 ### Added
 - Initial release of Leneda Energy Dashboard

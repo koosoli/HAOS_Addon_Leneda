@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
 """
 Leneda Energy Dashboard - Backend Server (Pure Python stdlib)
-Version: 1.0.0
+Version: 1.0.2
 License: GPL-3.0
 
 NO EXTERNAL DEPENDENCIES - Uses only Python standard library
+
+Changelog v1.0.2:
+- Fixed URL encoding for OBIS codes and metering point parameters
+- Enhanced error handling and logging for API requests
+- Fixed date formatting issues (now properly requests yesterday's data)
+- Added support for multiple config file paths
+- Improved HTTP headers for API requests
+- Fixed frontend JavaScript logging error
 """
 
 import os
@@ -137,7 +145,7 @@ class LenedaHandler(BaseHTTPRequestHandler):
             # Simple health check - no external dependencies
             self.send_json({
                 'status': 'healthy',
-                'version': '1.0.0',
+                'version': '1.0.2',
                 'timestamp': datetime.now().isoformat()
             })
         
@@ -419,7 +427,7 @@ def main():
     logger.info("=" * 60)
     logger.info("  Leneda Energy Dashboard - Starting Server")
     logger.info("=" * 60)
-    logger.info("Version: 1.0.0")
+    logger.info("Version: 1.0.2")
     logger.info("License: GPL-3.0")
     logger.info(f"Server listening on: http://0.0.0.0:8099")
     logger.info(f"Static files: {STATIC_DIR}")
