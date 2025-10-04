@@ -88,31 +88,50 @@ function toggleTheme() {
 // Load Configuration
 async function loadConfiguration() {
     try {
+        console.log('🔧 Loading configuration from /api/config...');
         const response = await fetch('/api/config');
         if (response.ok) {
             config = await response.json();
-            console.log('Configuration loaded:', config);
+            console.log('✅ Configuration loaded:', config);
+            console.log('🔧 API key status:', config.has_api_key);
+            console.log('🔧 Energy ID status:', config.has_energy_id);
+            console.log('🔧 Metering points:', config.metering_points?.length || 0);
+            
             updateConfigStatus();
             
             // Load initial data if configured
             if (config.has_api_key && config.has_energy_id) {
+                console.log('✅ Credentials available, loading data...');
                 refreshData();
             } else {
+                console.log('❌ Missing credentials - showing error');
                 showStatus('Please configure API credentials in settings', 'error');
             }
+        } else {
+            console.error('❌ Failed to load config, status:', response.status);
+            showStatus('Failed to load configuration', 'error');
         }
     } catch (error) {
-        console.error('Error loading configuration:', error);
+        console.error('❌ Error loading configuration:', error);
         showStatus('Failed to load configuration', 'error');
     }
 }
 
 // Update Configuration Status Display
 function updateConfigStatus() {
-    document.getElementById('apiKeyStatus').textContent = 
-        config.has_api_key ? '✅ Configured' : '❌ Not Configured';
-    document.getElementById('energyIdStatus').textContent = 
-        config.has_energy_id ? '✅ Configured' : '❌ Not Configured';
+    console.log('🔧 Updating config status display...');
+    console.log('🔧 config.has_api_key:', config.has_api_key);
+    console.log('🔧 config.has_energy_id:', config.has_energy_id);
+    console.log('🔧 config.metering_points:', config.metering_points);
+    
+    const apiKeyText = config.has_api_key ? '✅ Configured' : '❌ Not Configured';
+    const energyIdText = config.has_energy_id ? '✅ Configured' : '❌ Not Configured';
+    
+    console.log('🔧 Setting API key status to:', apiKeyText);
+    console.log('🔧 Setting Energy ID status to:', energyIdText);
+    
+    document.getElementById('apiKeyStatus').textContent = apiKeyText;
+    document.getElementById('energyIdStatus').textContent = energyIdText;
     document.getElementById('meteringPointsCount').textContent = 
         config.metering_points?.length || 0;
 }

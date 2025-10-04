@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Leneda Energy Dashboard - Backend Server (Pure Python stdlib)
-Version: 1.0.3
+Version: 1.0.4
 License: GPL-3.0
 
 NO EXTERNAL DEPENDENCIES - Uses only Python standard library
@@ -189,7 +189,7 @@ class LenedaHandler(BaseHTTPRequestHandler):
     
     def log_message(self, format, *args):
         """Override to use proper logging"""
-        logger.info("%s - %s" % (self.address_string(), format % args))
+        logger.info("🌐 %s - %s" % (self.address_string(), format % args))
     
     def send_json(self, data, status=200):
         """Send JSON response"""
@@ -223,25 +223,44 @@ class LenedaHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path
         
+        logger.info(f"🌐 GET request: {self.path}")
+        
         # API endpoints
         if path == '/api/health':
+            logger.info("🔧 Health check requested")
             # Simple health check - no external dependencies
             self.send_json({
                 'status': 'healthy',
-                'version': '1.0.3',
+                'version': '1.0.4',
                 'timestamp': datetime.now().isoformat()
             })
         
         elif path == '/api/config':
+            logger.info("🔧 === CONFIG API REQUEST ===")
             config = load_config()
-            # Remove sensitive data
+            
+            # Prepare safe config for frontend (without sensitive data)
+            api_key = config.get('api_key', '')
+            energy_id = config.get('energy_id', '')
+            metering_points = config.get('metering_points', [])
+            
+            # Check if credentials are real (not placeholders)
+            has_real_api_key = bool(api_key and api_key.strip() and api_key != 'your-test-api-key')
+            has_real_energy_id = bool(energy_id and energy_id.strip() and energy_id != 'your-test-energy-id')
+            
+            logger.info(f"🔧 Config API - API key present: {has_real_api_key}")
+            logger.info(f"🔧 Config API - Energy ID present: {has_real_energy_id}")
+            logger.info(f"🔧 Config API - Metering points: {len(metering_points)}")
+            
             safe_config = {
-                'has_api_key': bool(config.get('api_key')),
-                'has_energy_id': bool(config.get('energy_id')),
-                'metering_points': config.get('metering_points', []),
+                'has_api_key': has_real_api_key,
+                'has_energy_id': has_real_energy_id,
+                'metering_points': metering_points,
                 'billing': config.get('billing', {}),
                 'display': config.get('display', {})
             }
+            
+            logger.info(f"🔧 Sending config to frontend: {safe_config}")
             self.send_json(safe_config)
         
         elif path == '/api/metering-data':
@@ -538,7 +557,7 @@ def main():
     logger.info("=" * 60)
     logger.info("  Leneda Energy Dashboard - Starting Server")
     logger.info("=" * 60)
-    logger.info("Version: 1.0.3")
+    logger.info("Version: 1.0.4")
     logger.info("License: GPL-3.0")
     logger.info(f"Server listening on: http://0.0.0.0:8099")
     logger.info(f"Static files: {STATIC_DIR}")
