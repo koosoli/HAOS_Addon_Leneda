@@ -1,33 +1,65 @@
 // Leneda Energy Dashboard - JavaScript
-// Version: 1.0.5
+// Version: 1.0.6
 
-console.log('🚀 Loading Leneda Dashboard JavaScript v1.0.5');
+console.log('🚀 Loading Leneda Dashboard JavaScript v1.0.6');
 
 let config = {};
 let charts = {};
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Leneda Dashboard initializing...');
-    console.log('🚀 Current URL:', window.location.href);
-    console.log('🚀 Setting up application...');
+    console.log('🚀 === APPLICATION INITIALIZATION START ===');
+    console.log('🚀 DOM Content Loaded event fired');
+    console.log('🚀 Document ready state:', document.readyState);
+    console.log('🚀 Current time:', new Date().toISOString());
+    console.log('🚀 Window location:', window.location.href);
+    console.log('🚀 Document title:', document.title);
     
-    // Set up event listeners
-    setupEventListeners();
+    // Check if required elements exist
+    const requiredElements = [
+        'apiKeyStatus', 'energyIdStatus', 'meteringPointsCount',
+        'connectionStatus', 'dataStatus', 'backendVersion'
+    ];
     
-    // Load configuration
+    console.log('🚀 Checking for required DOM elements...');
+    requiredElements.forEach(id => {
+        const element = document.getElementById(id);
+        console.log(`🚀 Element '${id}':`, element ? '✅ Found' : '❌ Missing');
+    });
+    
+    console.log('🚀 Setting up event listeners...');
+    try {
+        setupEventListeners();
+        console.log('🚀 Event listeners setup complete');
+    } catch (error) {
+        console.error('❌ Error setting up event listeners:', error);
+    }
+    
     console.log('🚀 About to load configuration...');
-    loadConfiguration();
+    try {
+        loadConfiguration();
+        console.log('🚀 Configuration loading initiated');
+    } catch (error) {
+        console.error('❌ Error initiating configuration load:', error);
+    }
     
-    // Initialize charts
     console.log('🚀 Initializing charts...');
-    initializeCharts();
+    try {
+        initializeCharts();
+        console.log('🚀 Charts initialization complete');
+    } catch (error) {
+        console.error('❌ Error initializing charts:', error);
+    }
     
-    // Start auto-refresh
     console.log('🚀 Starting auto-refresh...');
-    startAutoRefresh();
+    try {
+        startAutoRefresh();
+        console.log('🚀 Auto-refresh started');
+    } catch (error) {
+        console.error('❌ Error starting auto-refresh:', error);
+    }
     
-    console.log('🚀 Initialization complete!');
+    console.log('🚀 === APPLICATION INITIALIZATION COMPLETE ===');
 });
 
 // Event Listeners
@@ -97,63 +129,129 @@ function toggleTheme() {
 // Load Configuration
 async function loadConfiguration() {
     try {
-        console.log('🔧 Loading configuration from /api/config...');
+        console.log('🔧 === FRONTEND CONFIG LOADING START ===');
+        console.log('🔧 Current URL:', window.location.href);
+        console.log('🔧 User Agent:', navigator.userAgent);
+        console.log('🔧 Browser:', navigator.appName, navigator.appVersion);
+        
+        updateConnectionStatus('🔄 Connecting to server...', 'loading');
         
         // First test if we can reach the server at all
         console.log('🔧 Testing server connectivity...');
         try {
-            const healthResponse = await fetch('/api/health');
+            const healthStart = performance.now();
+            const healthResponse = await fetch('/api/health', {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-cache'
+                }
+            });
+            const healthEnd = performance.now();
+            
             console.log('🔧 Health check response status:', healthResponse.status);
+            console.log('🔧 Health check took:', Math.round(healthEnd - healthStart), 'ms');
+            console.log('🔧 Health response headers:', [...healthResponse.headers.entries()]);
+            
             if (healthResponse.ok) {
                 const healthData = await healthResponse.json();
                 console.log('🔧 Health check data:', healthData);
+                
+                // Update backend version display
+                updateBackendVersion(healthData.version);
+                updateConnectionStatus('✅ Connected to server', 'connected');
+                console.log('🔧 Server connection successful');
+            } else {
+                console.error('❌ Health check failed with status:', healthResponse.status);
+                updateConnectionStatus('❌ Server returned error', 'error');
             }
         } catch (healthError) {
             console.error('❌ Health check failed:', healthError);
+            console.error('❌ Health error type:', healthError.name);
+            console.error('❌ Health error message:', healthError.message);
+            updateConnectionStatus('❌ Server connection failed', 'error');
         }
         
         // Now try to get the config
+        console.log('🔧 Attempting to load configuration...');
+        const configStart = performance.now();
+        
         const response = await fetch('/api/config', {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
-                'Cache-Control': 'no-cache'
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
             }
         });
         
+        const configEnd = performance.now();
+        console.log('🔧 Config request took:', Math.round(configEnd - configStart), 'ms');
         console.log('🔧 Config response status:', response.status);
+        console.log('🔧 Config response ok:', response.ok);
         console.log('🔧 Config response headers:', [...response.headers.entries()]);
         
         if (response.ok) {
             const responseText = await response.text();
+            console.log('🔧 Raw config response length:', responseText.length, 'characters');
             console.log('🔧 Raw config response:', responseText);
             
-            config = JSON.parse(responseText);
-            console.log('✅ Configuration loaded:', config);
-            console.log('🔧 API key status:', config.has_api_key);
-            console.log('🔧 Energy ID status:', config.has_energy_id);
-            console.log('🔧 Metering points:', config.metering_points?.length || 0);
-            
-            updateConfigStatus();
-            
-            // Load initial data if configured
-            if (config.has_api_key && config.has_energy_id) {
-                console.log('✅ Credentials available, loading data...');
-                refreshData();
-            } else {
-                console.log('❌ Missing credentials - showing error');
-                showStatus('Please configure API credentials in settings', 'error');
+            try {
+                config = JSON.parse(responseText);
+                console.log('✅ Configuration parsed successfully');
+                console.log('🔧 Parsed config object:', config);
+                console.log('🔧 Config type:', typeof config);
+                console.log('🔧 Config keys:', Object.keys(config));
+                console.log('🔧 API key status in config:', config.has_api_key, '(type:', typeof config.has_api_key, ')');
+                console.log('🔧 Energy ID status in config:', config.has_energy_id, '(type:', typeof config.has_energy_id, ')');
+                console.log('🔧 Metering points in config:', config.metering_points?.length || 0);
+                
+                updateConfigStatus();
+                updateLastUpdated();
+                
+                // Load initial data if configured
+                if (config.has_api_key && config.has_energy_id) {
+                    console.log('✅ Credentials available, loading data...');
+                    updateDataStatus('📊 Loading data...', 'loading');
+                    refreshData();
+                } else {
+                    console.log('❌ Missing credentials');
+                    console.log('❌ API key check:', config.has_api_key, 'Energy ID check:', config.has_energy_id);
+                    updateDataStatus('❌ Missing credentials', 'error');
+                    showStatus('Please configure API credentials in Home Assistant addon settings', 'error');
+                }
+            } catch (parseError) {
+                console.error('❌ JSON parse error:', parseError);
+                console.error('❌ Parse error message:', parseError.message);
+                updateConnectionStatus('❌ Invalid server response', 'error');
+                showStatus('Server returned invalid data', 'error');
             }
         } else {
             console.error('❌ Failed to load config, status:', response.status);
-            const errorText = await response.text();
-            console.error('❌ Error response:', errorText);
+            console.error('❌ Response status text:', response.statusText);
+            
+            try {
+                const errorText = await response.text();
+                console.error('❌ Error response body:', errorText);
+            } catch (e) {
+                console.error('❌ Could not read error response:', e);
+            }
+            
+            updateConnectionStatus('❌ Config load failed', 'error');
             showStatus('Failed to load configuration', 'error');
         }
+        
+        console.log('🔧 === FRONTEND CONFIG LOADING END ===');
+        
     } catch (error) {
-        console.error('❌ Error loading configuration:', error);
-        console.error('❌ Error details:', error.message, error.stack);
+        console.error('❌ === FRONTEND CONFIG LOADING ERROR ===');
+        console.error('❌ Error type:', error.name);
+        console.error('❌ Error message:', error.message);
+        console.error('❌ Error stack:', error.stack);
+        updateConnectionStatus('❌ Connection error', 'error');
         showStatus('Failed to load configuration', 'error');
+        console.error('❌ === END ERROR ===');
     }
 }
 
@@ -174,6 +272,43 @@ function updateConfigStatus() {
     document.getElementById('energyIdStatus').textContent = energyIdText;
     document.getElementById('meteringPointsCount').textContent = 
         config.metering_points?.length || 0;
+}
+
+// Update Backend Version Display
+function updateBackendVersion(version) {
+    const backendElements = document.querySelectorAll('#backendVersion, #backendVersionSettings');
+    backendElements.forEach(element => {
+        if (element) {
+            element.textContent = `v${version}`;
+            element.classList.add('version-badge');
+        }
+    });
+}
+
+// Update Connection Status
+function updateConnectionStatus(message, status = 'loading') {
+    const element = document.getElementById('connectionStatus');
+    if (element) {
+        element.textContent = message;
+        element.className = `status-indicator ${status}`;
+    }
+}
+
+// Update Data Status
+function updateDataStatus(message, status = 'loading') {
+    const element = document.getElementById('dataStatus');
+    if (element) {
+        element.textContent = message;
+        element.className = `status-indicator ${status}`;
+    }
+}
+
+// Update Last Updated Time
+function updateLastUpdated() {
+    const element = document.getElementById('lastUpdated');
+    if (element) {
+        element.textContent = new Date().toLocaleString();
+    }
 }
 
 // Display Settings
@@ -211,7 +346,8 @@ function displaySettings() {
 
 // Refresh All Data
 async function refreshData() {
-    console.log('Refreshing data...');
+    console.log('🔧 Refreshing data...');
+    updateDataStatus('🔄 Refreshing data...', 'loading');
     showStatus('Refreshing data...', 'success');
     
     try {
@@ -220,10 +356,13 @@ async function refreshData() {
             updateLiveChart()
         ]);
         
+        updateDataStatus('✅ Data loaded', 'connected');
         showStatus('Data refreshed successfully', 'success');
+        updateLastUpdated();
         setTimeout(() => hideStatus(), 3000);
     } catch (error) {
-        console.error('Error refreshing data:', error);
+        console.error('❌ Error refreshing data:', error);
+        updateDataStatus('❌ Data load failed', 'error');
         showStatus('Failed to refresh data', 'error');
     }
 }

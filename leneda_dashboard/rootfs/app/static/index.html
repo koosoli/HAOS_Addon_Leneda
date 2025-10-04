@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leneda Energy Dashboard v1.0.5</title>
+    <title>Leneda Energy Dashboard v1.0.6</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-    <link rel="stylesheet" href="styles.css?v=1.0.5">
-    <!-- Version 1.0.5 - Fixed caching and enhanced debugging -->
+    <link rel="stylesheet" href="styles.css?v=1.0.6">
+    <!-- Version 1.0.6 - Enhanced UI with version tracking -->
 </head>
 <body class="dark-theme">
     <div class="container">
@@ -15,6 +15,10 @@
         <header class="header">
             <div class="header-content">
                 <h1>⚡ Leneda Energy Dashboard</h1>
+                <div class="version-info">
+                    <span class="version-badge">Frontend: v1.0.6</span>
+                    <span id="backendVersion" class="version-badge">Backend: Loading...</span>
+                </div>
                 <div class="header-actions">
                     <button id="refreshBtn" class="btn btn-icon" title="Refresh Data">
                         <span>🔄</span>
@@ -29,6 +33,12 @@
         <!-- Status Banner -->
         <div id="statusBanner" class="status-banner hidden">
             <span id="statusMessage"></span>
+        </div>
+        
+        <!-- Connection Status -->
+        <div class="connection-status">
+            <span id="connectionStatus" class="status-indicator">🔄 Connecting...</span>
+            <span id="dataStatus" class="status-indicator">📊 No data loaded</span>
         </div>
 
         <!-- Data Info Banner -->
@@ -220,20 +230,32 @@
             <div id="settings" class="tab-content">
                 <div class="card">
                     <div class="card-header">
-                        <h3>Configuration Status</h3>
+                        <h3>🔧 Configuration Status</h3>
                     </div>
                     <div class="card-body">
                         <div class="stat-row">
-                            <span>API Key</span>
+                            <span><strong>Frontend Version</strong></span>
+                            <span class="version-badge">v1.0.6</span>
+                        </div>
+                        <div class="stat-row">
+                            <span><strong>Backend Version</strong></span>
+                            <span id="backendVersionSettings" class="version-badge">Loading...</span>
+                        </div>
+                        <div class="stat-row">
+                            <span><strong>API Key</strong></span>
                             <span id="apiKeyStatus">❌ Not Configured</span>
                         </div>
                         <div class="stat-row">
-                            <span>Energy ID</span>
+                            <span><strong>Energy ID</strong></span>
                             <span id="energyIdStatus">❌ Not Configured</span>
                         </div>
                         <div class="stat-row">
-                            <span>Metering Points</span>
+                            <span><strong>Metering Points</strong></span>
                             <span id="meteringPointsCount">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span><strong>Last Updated</strong></span>
+                            <span id="lastUpdated">Never</span>
                         </div>
                         <div class="alert alert-info mt-20">
                             <strong>ℹ️ Configuration</strong><br>
@@ -258,13 +280,13 @@
 
         <!-- Footer -->
         <footer class="footer">
-            <p>Leneda Energy Dashboard v1.0.5 | Made by Olivier Koos</p>
+            <p>Leneda Energy Dashboard v1.0.6 | Made by Olivier Koos</p>
         </footer>
     </div>
 
-    <script src="app.js?v=1.0.5"></script>
+    <script src="app.js?v=1.0.6"></script>
     <script>
-        console.log('🚀 HTML v1.0.5 loaded at:', new Date().toISOString());
+        console.log('🚀 HTML v1.0.6 loaded at:', new Date().toISOString());
     </script>
 </body>
 </html>

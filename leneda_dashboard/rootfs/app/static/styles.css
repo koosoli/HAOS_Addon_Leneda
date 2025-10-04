@@ -459,3 +459,64 @@ canvas {
 ::-webkit-scrollbar-thumb:hover {
     background: var(--accent-secondary);
 }
+
+/* Version and Status Indicators */
+.version-info {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.version-badge {
+    background: var(--accent-gradient);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.connection-status {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    padding: 8px;
+    background: var(--bg-card);
+    border-radius: 8px;
+    margin-bottom: 16px;
+    border: 1px solid var(--border);
+}
+
+.status-indicator {
+    font-size: 0.875rem;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: var(--bg-hover);
+}
+
+.status-indicator.connected {
+    color: var(--success);
+}
+
+.status-indicator.error {
+    color: var(--danger);
+}
+
+.status-indicator.loading {
+    color: var(--warning);
+}
+
+/* Responsive header adjustments */
+@media (max-width: 768px) {
+    .version-info {
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .header-content {
+        flex-direction: column;
+        gap: 12px;
+        align-items: center;
+    }
+}

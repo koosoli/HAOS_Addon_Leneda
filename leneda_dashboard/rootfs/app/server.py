@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Leneda Energy Dashboard - Backend Server (Pure Python stdlib)
-Version: 1.0.5
+Version: 1.0.7
 License: GPL-3.0
 
 NO EXTERNAL DEPENDENCIES - Uses only Python standard library
@@ -231,12 +231,34 @@ class LenedaHandler(BaseHTTPRequestHandler):
             # Simple health check - no external dependencies
             self.send_json({
                 'status': 'healthy',
-                'version': '1.0.5',
+                'version': '1.0.7',
                 'timestamp': datetime.now().isoformat()
             })
         
+        elif path == '/api/debug':
+            logger.info("🔧 === DEBUG API REQUEST ===")
+            config = load_config()
+            
+            debug_info = {
+                'server_version': '1.0.7',
+                'timestamp': datetime.now().isoformat(),
+                'config_file_exists': os.path.exists(CONFIG_FILE),
+                'config_file_path': CONFIG_FILE,
+                'raw_config_keys': list(config.keys()) if config else [],
+                'api_key_length': len(config.get('api_key', '')),
+                'energy_id_value': config.get('energy_id', ''),
+                'metering_points_count': len(config.get('metering_points', [])),
+                'request_headers': dict(self.headers),
+                'client_address': str(self.client_address)
+            }
+            
+            logger.info(f"🔧 Debug info: {json.dumps(debug_info, indent=2)}")
+            self.send_json(debug_info)
+        
         elif path == '/api/config':
-            logger.info("🔧 === CONFIG API REQUEST ===")
+            logger.info(f"🔧 Request from: {self.client_address}")
+            logger.info(f"🔧 User-Agent: {self.headers.get('User-Agent', 'Unknown')}")
+            
             config = load_config()
             
             # Prepare safe config for frontend (without sensitive data)
@@ -248,9 +270,18 @@ class LenedaHandler(BaseHTTPRequestHandler):
             has_real_api_key = bool(api_key and api_key.strip() and api_key != 'your-test-api-key')
             has_real_energy_id = bool(energy_id and energy_id.strip() and energy_id != 'your-test-energy-id')
             
-            logger.info(f"🔧 Config API - API key present: {has_real_api_key}")
-            logger.info(f"🔧 Config API - Energy ID present: {has_real_energy_id}")
-            logger.info(f"🔧 Config API - Metering points: {len(metering_points)}")
+            logger.info(f"🔧 Raw config values:")
+            logger.info(f"🔧   - API key length: {len(api_key)} chars")
+            logger.info(f"🔧   - API key starts with: '{api_key[:10]}...' (showing first 10 chars)")
+            logger.info(f"🔧   - Energy ID: '{energy_id}'")
+            logger.info(f"🔧   - Metering points count: {len(metering_points)}")
+            if metering_points:
+                for i, mp in enumerate(metering_points):
+                    logger.info(f"🔧   - Meter {i+1}: '{mp.get('name', 'Unknown')}' -> '{mp.get('code', 'Unknown')}'")
+            
+            logger.info(f"🔧 Processed config for frontend:")
+            logger.info(f"🔧   - has_api_key result: {has_real_api_key}")
+            logger.info(f"🔧   - has_energy_id result: {has_real_energy_id}")
             
             safe_config = {
                 'has_api_key': has_real_api_key,
@@ -260,8 +291,9 @@ class LenedaHandler(BaseHTTPRequestHandler):
                 'display': config.get('display', {})
             }
             
-            logger.info(f"🔧 Sending config to frontend: {safe_config}")
+            logger.info(f"🔧 Sending to frontend: {json.dumps(safe_config, indent=2)}")
             self.send_json(safe_config)
+            logger.info("🔧 === CONFIG API REQUEST COMPLETE ===")
         
         elif path == '/api/metering-data':
             self.handle_metering_data()
@@ -557,7 +589,7 @@ def main():
     logger.info("=" * 60)
     logger.info("  Leneda Energy Dashboard - Starting Server")
     logger.info("=" * 60)
-    logger.info("Version: 1.0.5")
+    logger.info("Version: 1.0.7")
     logger.info("License: GPL-3.0")
     logger.info(f"Server listening on: http://0.0.0.0:8099")
     logger.info(f"Static files: {STATIC_DIR}")
