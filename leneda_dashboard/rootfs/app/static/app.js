@@ -1,7 +1,9 @@
 // Leneda Energy Dashboard - JavaScript
-// Version: 1.0.6
+// Version: 1.0.8 - NUCLEAR CACHE BUST
 
-console.log('🚀 Loading Leneda Dashboard JavaScript v1.0.6');
+console.log('🚀 Loading Leneda Dashboard JavaScript v1.0.8');
+console.log('💥 NUCLEAR CACHE BUST v1.0.8 ACTIVE!');
+console.log('💥 💥 💥 IF YOU SEE THIS, THE FILES ARE UPDATING! 💥 💥 💥');
 
 let config = {};
 let charts = {};

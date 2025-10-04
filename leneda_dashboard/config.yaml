@@ -1,7 +1,7 @@
 name: "Leneda Energy Dashboard"
-version: "1.0.7"
+version: "1.0.8"
 slug: leneda_dashboard
-description: "Advanced energy dashboard with comprehensive debugging. Enhanced logging to troubleshoot configuration issues."
+description: "Advanced energy dashboard with NUCLEAR cache busting. Forces complete frontend refresh to fix caching issues."
 url: "https://github.com/koosoli/HAOS_Addon_Leneda"
 arch:
   - aarch64

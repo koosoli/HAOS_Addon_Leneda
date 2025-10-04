@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Leneda Energy Dashboard - Backend Server (Pure Python stdlib)
-Version: 1.0.7
+Version: 1.0.8
 License: GPL-3.0
 
 NO EXTERNAL DEPENDENCIES - Uses only Python standard library
@@ -192,16 +192,21 @@ class LenedaHandler(BaseHTTPRequestHandler):
         logger.info("🌐 %s - %s" % (self.address_string(), format % args))
     
     def send_json(self, data, status=200):
-        """Send JSON response"""
+        """Send JSON response with cache busting"""
         self.send_response(status)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Cache-Control', 'no-cache')
+        # NUCLEAR CACHE BUSTING for API responses too
+        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0')
+        self.send_header('Pragma', 'no-cache')
+        self.send_header('Expires', '0')
         self.end_headers()
-        self.wfile.write(json.dumps(data).encode('utf-8'))
+        response_json = json.dumps(data)
+        self.wfile.write(response_json.encode('utf-8'))
+        logger.info(f"📡 Sent JSON response ({len(response_json)} chars) with cache busting")
     
     def send_file(self, filepath):
-        """Send file response"""
+        """Send file response with aggressive cache busting"""
         try:
             with open(filepath, 'rb') as f:
                 content = f.read()
@@ -209,9 +214,17 @@ class LenedaHandler(BaseHTTPRequestHandler):
             mime_type, _ = mimetypes.guess_type(filepath)
             self.send_response(200)
             self.send_header('Content-Type', mime_type or 'application/octet-stream')
-            self.send_header('Cache-Control', 'public, max-age=3600')
+            
+            # NUCLEAR CACHE BUSTING - Force browsers to reload everything
+            self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0')
+            self.send_header('Pragma', 'no-cache')
+            self.send_header('Expires', '0')
+            self.send_header('Last-Modified', 'Thu, 01 Jan 1970 00:00:00 GMT')
+            self.send_header('ETag', f'"{hash(content)}-1.0.7"')
+            
             self.end_headers()
             self.wfile.write(content)
+            logger.info(f"🗂️ Served file {filepath} with NUCLEAR cache busting")
         except FileNotFoundError:
             self.send_error(404, 'File not found')
         except Exception as e:
@@ -231,7 +244,7 @@ class LenedaHandler(BaseHTTPRequestHandler):
             # Simple health check - no external dependencies
             self.send_json({
                 'status': 'healthy',
-                'version': '1.0.7',
+                'version': '1.0.8',
                 'timestamp': datetime.now().isoformat()
             })
         
@@ -240,7 +253,7 @@ class LenedaHandler(BaseHTTPRequestHandler):
             config = load_config()
             
             debug_info = {
-                'server_version': '1.0.7',
+                'server_version': '1.0.8',
                 'timestamp': datetime.now().isoformat(),
                 'config_file_exists': os.path.exists(CONFIG_FILE),
                 'config_file_path': CONFIG_FILE,
@@ -589,7 +602,7 @@ def main():
     logger.info("=" * 60)
     logger.info("  Leneda Energy Dashboard - Starting Server")
     logger.info("=" * 60)
-    logger.info("Version: 1.0.7")
+    logger.info("Version: 1.0.8")
     logger.info("License: GPL-3.0")
     logger.info(f"Server listening on: http://0.0.0.0:8099")
     logger.info(f"Static files: {STATIC_DIR}")
