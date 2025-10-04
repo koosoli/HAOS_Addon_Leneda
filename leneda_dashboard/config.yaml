@@ -1,7 +1,7 @@
 name: "Leneda Energy Dashboard"
-version: "1.0.8"
+version: "1.0.9"
 slug: leneda_dashboard
-description: "Advanced energy dashboard with NUCLEAR cache busting. Forces complete frontend refresh to fix caching issues."
+description: "Advanced energy dashboard with enhanced connection debugging. Traces frontend-backend communication issues."
 url: "https://github.com/koosoli/HAOS_Addon_Leneda"
 arch:
   - aarch64
@@ -13,11 +13,13 @@ startup: application
 boot: auto
 ingress: true
 ingress_port: 8099
+ingress_entry: "/"
 panel_icon: mdi:lightning-bolt
 panel_title: "Leneda Energy"
 panel_admin: false
 webui: "http://[HOST]:[PORT:8099]"
 init: false
+host_network: false
 ports:
   8099/tcp: null
 ports_description:

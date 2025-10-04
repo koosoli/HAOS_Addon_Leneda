@@ -1,12 +1,49 @@
 // Leneda Energy Dashboard - JavaScript
-// Version: 1.0.8 - NUCLEAR CACHE BUST
+// Version: 1.0.9 - HOME ASSISTANT INGRESS FIX
 
-console.log('🚀 Loading Leneda Dashboard JavaScript v1.0.8');
-console.log('💥 NUCLEAR CACHE BUST v1.0.8 ACTIVE!');
+console.log('🚀 Loading Leneda Dashboard JavaScript v1.0.9');
+console.log('🏠 HOME ASSISTANT INGRESS COMMUNICATION FIX ACTIVE!');
 console.log('💥 💥 💥 IF YOU SEE THIS, THE FILES ARE UPDATING! 💥 💥 💥');
 
 let config = {};
 let charts = {};
+
+// Detect Home Assistant ingress and set proper API base URL
+function getApiBaseUrl() {
+    const currentUrl = window.location.href;
+    console.log('🔧 Current URL:', currentUrl);
+    
+    // Check if we're running through Home Assistant ingress
+    if (currentUrl.includes('/api/hassio_ingress/')) {
+        // We're in Home Assistant ingress mode
+        const ingressMatch = currentUrl.match(/(.+\/api\/hassio_ingress\/[^\/]+)/);
+        if (ingressMatch) {
+            const apiBase = ingressMatch[1];
+            console.log('🏠 Detected Home Assistant ingress mode');
+            console.log('🏠 Using ingress API base:', apiBase);
+            return apiBase;
+        }
+    }
+    
+    // Check if we're in a Home Assistant addon panel
+    if (currentUrl.includes('homeassistant.local') || currentUrl.includes(':8123')) {
+        console.log('🏠 Detected Home Assistant environment');
+        // Try to detect the ingress path
+        const pathMatch = window.location.pathname.match(/^(\/[^\/]+\/[^\/]+)/);
+        if (pathMatch) {
+            const apiBase = window.location.origin + pathMatch[1];
+            console.log('🏠 Using detected ingress path:', apiBase);
+            return apiBase;
+        }
+    }
+    
+    // Default to current origin (direct access or development)
+    console.log('🔧 Using default origin-based API base');
+    return window.location.origin;
+}
+
+const API_BASE_URL = getApiBaseUrl();
+console.log('🔧 Final API base URL:', API_BASE_URL);
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
@@ -135,14 +172,18 @@ async function loadConfiguration() {
         console.log('🔧 Current URL:', window.location.href);
         console.log('🔧 User Agent:', navigator.userAgent);
         console.log('🔧 Browser:', navigator.appName, navigator.appVersion);
+        console.log('🔧 Base URL for API calls:', window.location.origin);
         
         updateConnectionStatus('🔄 Connecting to server...', 'loading');
         
         // First test if we can reach the server at all
-        console.log('🔧 Testing server connectivity...');
+        console.log('🔧 Testing server connectivity to /api/health...');
+        const healthUrl = `${API_BASE_URL}/api/health`;
+        console.log('🔧 Full health URL:', healthUrl);
+        
         try {
             const healthStart = performance.now();
-            const healthResponse = await fetch('/api/health', {
+            const healthResponse = await fetch(healthUrl, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
@@ -154,6 +195,8 @@ async function loadConfiguration() {
             console.log('🔧 Health check response status:', healthResponse.status);
             console.log('🔧 Health check took:', Math.round(healthEnd - healthStart), 'ms');
             console.log('🔧 Health response headers:', [...healthResponse.headers.entries()]);
+            console.log('🔧 Health response ok:', healthResponse.ok);
+            console.log('🔧 Health response type:', healthResponse.type);
             
             if (healthResponse.ok) {
                 const healthData = await healthResponse.json();
@@ -162,23 +205,31 @@ async function loadConfiguration() {
                 // Update backend version display
                 updateBackendVersion(healthData.version);
                 updateConnectionStatus('✅ Connected to server', 'connected');
-                console.log('🔧 Server connection successful');
+                console.log('🔧 Server connection successful, proceeding to config...');
             } else {
                 console.error('❌ Health check failed with status:', healthResponse.status);
-                updateConnectionStatus('❌ Server returned error', 'error');
+                console.error('❌ Health response status text:', healthResponse.statusText);
+                updateConnectionStatus('❌ Server returned error ' + healthResponse.status, 'error');
+                showStatus('Server health check failed: ' + healthResponse.status, 'error');
+                return; // Stop here if health check fails
             }
         } catch (healthError) {
-            console.error('❌ Health check failed:', healthError);
-            console.error('❌ Health error type:', healthError.name);
+            console.error('❌ Health check failed completely:', healthError);
+            console.error('❌ Health error name:', healthError.name);
             console.error('❌ Health error message:', healthError.message);
-            updateConnectionStatus('❌ Server connection failed', 'error');
+            console.error('❌ Health error stack:', healthError.stack);
+            updateConnectionStatus('❌ Cannot reach server', 'error');
+            showStatus('Cannot connect to server. Check if addon is running.', 'error');
+            return; // Stop here if we can't reach server
         }
         
         // Now try to get the config
-        console.log('🔧 Attempting to load configuration...');
+        console.log('🔧 Attempting to load configuration from /api/config...');
+        const configUrl = `${API_BASE_URL}/api/config`;
+        console.log('🔧 Full config URL:', configUrl);
         const configStart = performance.now();
         
-        const response = await fetch('/api/config', {
+        const response = await fetch(configUrl, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
@@ -192,7 +243,10 @@ async function loadConfiguration() {
         console.log('🔧 Config request took:', Math.round(configEnd - configStart), 'ms');
         console.log('🔧 Config response status:', response.status);
         console.log('🔧 Config response ok:', response.ok);
+        console.log('🔧 Config response status text:', response.statusText);
         console.log('🔧 Config response headers:', [...response.headers.entries()]);
+        console.log('🔧 Config response type:', response.type);
+        console.log('🔧 Config response URL:', response.url);
         
         if (response.ok) {
             const responseText = await response.text();
@@ -226,22 +280,25 @@ async function loadConfiguration() {
             } catch (parseError) {
                 console.error('❌ JSON parse error:', parseError);
                 console.error('❌ Parse error message:', parseError.message);
+                console.error('❌ Raw response that failed to parse:', responseText);
                 updateConnectionStatus('❌ Invalid server response', 'error');
                 showStatus('Server returned invalid data', 'error');
             }
         } else {
             console.error('❌ Failed to load config, status:', response.status);
             console.error('❌ Response status text:', response.statusText);
+            console.error('❌ Response headers:', [...response.headers.entries()]);
             
             try {
                 const errorText = await response.text();
                 console.error('❌ Error response body:', errorText);
+                showStatus('Config load failed: ' + response.status + ' - ' + errorText, 'error');
             } catch (e) {
                 console.error('❌ Could not read error response:', e);
+                showStatus('Config load failed: ' + response.status, 'error');
             }
             
             updateConnectionStatus('❌ Config load failed', 'error');
-            showStatus('Failed to load configuration', 'error');
         }
         
         console.log('🔧 === FRONTEND CONFIG LOADING END ===');
@@ -251,8 +308,9 @@ async function loadConfiguration() {
         console.error('❌ Error type:', error.name);
         console.error('❌ Error message:', error.message);
         console.error('❌ Error stack:', error.stack);
+        console.error('❌ Current URL:', window.location.href);
         updateConnectionStatus('❌ Connection error', 'error');
-        showStatus('Failed to load configuration', 'error');
+        showStatus('Failed to load configuration: ' + error.message, 'error');
         console.error('❌ === END ERROR ===');
     }
 }
@@ -387,7 +445,7 @@ async function updateDashboardStats() {
         const yesterdayEnd = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59);
         
         // Get yesterday's consumption
-        const response = await fetch(`/api/aggregated-data?metering_point=${meteringPoint}&obis_code=1-1:1.29.0&start_date=${formatDate(yesterdayStart)}&end_date=${formatDate(yesterdayEnd)}&aggregation_level=Infinite`);
+        const response = await fetch(`${API_BASE_URL}/api/aggregated-data?metering_point=${meteringPoint}&obis_code=1-1:1.29.0&start_date=${formatDate(yesterdayStart)}&end_date=${formatDate(yesterdayEnd)}&aggregation_level=Infinite`);
         
         if (response.ok) {
             const data = await response.json();
@@ -398,7 +456,7 @@ async function updateDashboardStats() {
         // Get last 7 days data
         const weekAgo = new Date(yesterdayStart);
         weekAgo.setDate(weekAgo.getDate() - 7);
-        const weekResponse = await fetch(`/api/aggregated-data?metering_point=${meteringPoint}&obis_code=1-1:1.29.0&start_date=${formatDate(weekAgo)}&end_date=${formatDate(yesterdayEnd)}&aggregation_level=Infinite`);
+        const weekResponse = await fetch(`${API_BASE_URL}/api/aggregated-data?metering_point=${meteringPoint}&obis_code=1-1:1.29.0&start_date=${formatDate(weekAgo)}&end_date=${formatDate(yesterdayEnd)}&aggregation_level=Infinite`);
         
         if (weekResponse.ok) {
             const weekData = await weekResponse.json();
@@ -409,7 +467,7 @@ async function updateDashboardStats() {
         // Get last 30 days data
         const monthAgo = new Date(yesterdayStart);
         monthAgo.setDate(monthAgo.getDate() - 30);
-        const monthResponse = await fetch(`/api/aggregated-data?metering_point=${meteringPoint}&obis_code=1-1:1.29.0&start_date=${formatDate(monthAgo)}&end_date=${formatDate(yesterdayEnd)}&aggregation_level=Infinite`);
+        const monthResponse = await fetch(`${API_BASE_URL}/api/aggregated-data?metering_point=${meteringPoint}&obis_code=1-1:1.29.0&start_date=${formatDate(monthAgo)}&end_date=${formatDate(yesterdayEnd)}&aggregation_level=Infinite`);
         
         if (monthResponse.ok) {
             const monthData = await monthResponse.json();
@@ -423,7 +481,7 @@ async function updateDashboardStats() {
         }
         
         // Try to get production data if available (solar)
-        const productionResponse = await fetch(`/api/aggregated-data?metering_point=${meteringPoint}&obis_code=1-1:2.29.0&start_date=${formatDate(yesterdayStart)}&end_date=${formatDate(yesterdayEnd)}&aggregation_level=Infinite`);
+        const productionResponse = await fetch(`${API_BASE_URL}/api/aggregated-data?metering_point=${meteringPoint}&obis_code=1-1:2.29.0&start_date=${formatDate(yesterdayStart)}&end_date=${formatDate(yesterdayEnd)}&aggregation_level=Infinite`);
         
         if (productionResponse.ok) {
             const prodData = await productionResponse.json();
@@ -596,7 +654,7 @@ async function updateLiveChart() {
     const yesterdayEnd = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59);
     
     try {
-        const response = await fetch(`/api/metering-data?metering_point=${meteringPoint}&obis_code=1-1:1.29.0&start_date=${yesterdayStart.toISOString()}&end_date=${yesterdayEnd.toISOString()}`);
+        const response = await fetch(`${API_BASE_URL}/api/metering-data?metering_point=${meteringPoint}&obis_code=1-1:1.29.0&start_date=${yesterdayStart.toISOString()}&end_date=${yesterdayEnd.toISOString()}`);
         
         if (response.ok) {
             const data = await response.json();
@@ -679,7 +737,7 @@ async function updateChartData(period) {
     
     try {
         // Get consumption data
-        const consumptionResponse = await fetch(`/api/aggregated-data?metering_point=${meteringPoint}&obis_code=1-1:1.29.0&start_date=${formatDate(startDate)}&end_date=${formatDate(endDate)}&aggregation_level=${aggregationLevel}`);
+        const consumptionResponse = await fetch(`${API_BASE_URL}/api/aggregated-data?metering_point=${meteringPoint}&obis_code=1-1:1.29.0&start_date=${formatDate(startDate)}&end_date=${formatDate(endDate)}&aggregation_level=${aggregationLevel}`);
         
         let consumptionItems = [];
         if (consumptionResponse.ok) {
@@ -688,7 +746,7 @@ async function updateChartData(period) {
         }
         
         // Try to get production data
-        const productionResponse = await fetch(`/api/aggregated-data?metering_point=${meteringPoint}&obis_code=1-1:2.29.0&start_date=${formatDate(startDate)}&end_date=${formatDate(endDate)}&aggregation_level=${aggregationLevel}`);
+        const productionResponse = await fetch(`${API_BASE_URL}/api/aggregated-data?metering_point=${meteringPoint}&obis_code=1-1:2.29.0&start_date=${formatDate(startDate)}&end_date=${formatDate(endDate)}&aggregation_level=${aggregationLevel}`);
         
         let productionItems = [];
         if (productionResponse.ok) {
@@ -730,7 +788,7 @@ async function calculateInvoice() {
     const endOfLastMonth = new Date(yesterday.getFullYear(), yesterday.getMonth(), 0, 23, 59, 59);
     
     try {
-        const response = await fetch(`/api/calculate-invoice?metering_point=${meteringPoint}&start_date=${formatDate(startOfLastMonth)}&end_date=${formatDate(endOfLastMonth)}`);
+        const response = await fetch(`${API_BASE_URL}/api/calculate-invoice?metering_point=${meteringPoint}&start_date=${formatDate(startOfLastMonth)}&end_date=${formatDate(endOfLastMonth)}`);
         
         if (response.ok) {
             const invoice = await response.json();

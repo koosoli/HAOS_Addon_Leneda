@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Leneda Energy Dashboard - Backend Server (Pure Python stdlib)
-Version: 1.0.8
+Version: 1.0.9
 License: GPL-3.0
 
 NO EXTERNAL DEPENDENCIES - Uses only Python standard library
@@ -236,24 +236,32 @@ class LenedaHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path
         
+        logger.info(f"🌐 === INCOMING REQUEST ===")
         logger.info(f"🌐 GET request: {self.path}")
+        logger.info(f"🌐 Client address: {self.client_address}")
+        logger.info(f"🌐 User-Agent: {self.headers.get('User-Agent', 'Unknown')}")
+        logger.info(f"🌐 Referer: {self.headers.get('Referer', 'None')}")
+        logger.info(f"🌐 Host: {self.headers.get('Host', 'Unknown')}")
+        logger.info(f"🌐 Accept: {self.headers.get('Accept', 'Unknown')}")
+        logger.info(f"🌐 Parsed path: '{path}'")
         
         # API endpoints
         if path == '/api/health':
-            logger.info("🔧 Health check requested")
+            logger.info("🔧 === HEALTH CHECK REQUEST ===")
             # Simple health check - no external dependencies
             self.send_json({
                 'status': 'healthy',
-                'version': '1.0.8',
+                'version': '1.0.9',
                 'timestamp': datetime.now().isoformat()
             })
+            logger.info("🔧 Health check response sent")
         
         elif path == '/api/debug':
             logger.info("🔧 === DEBUG API REQUEST ===")
             config = load_config()
             
             debug_info = {
-                'server_version': '1.0.8',
+                'server_version': '1.0.9',
                 'timestamp': datetime.now().isoformat(),
                 'config_file_exists': os.path.exists(CONFIG_FILE),
                 'config_file_path': CONFIG_FILE,
@@ -602,7 +610,7 @@ def main():
     logger.info("=" * 60)
     logger.info("  Leneda Energy Dashboard - Starting Server")
     logger.info("=" * 60)
-    logger.info("Version: 1.0.8")
+    logger.info("Version: 1.0.9")
     logger.info("License: GPL-3.0")
     logger.info(f"Server listening on: http://0.0.0.0:8099")
     logger.info(f"Static files: {STATIC_DIR}")
