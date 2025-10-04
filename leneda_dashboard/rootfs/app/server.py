@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
 """
 Leneda Energy Dashboard - Backend Server (Pure Python stdlib)
-Version: 1.0.2
+Version: 1.0.3
 License: GPL-3.0
 
 NO EXTERNAL DEPENDENCIES - Uses only Python standard library
+
+Changelog v1.0.3:
+- Added comprehensive debug logging with emojis for easy identification
+- Enhanced error messages with specific troubleshooting hints
+- Detailed API request/response logging
+- Configuration validation with clear status indicators
+- Better credential validation and format checking
+- Network error categorization and suggestions
 
 Changelog v1.0.2:
 - Fixed URL encoding for OBIS codes and metering point parameters
@@ -44,15 +52,44 @@ def load_config():
         # Try production path first, then test path
         config_paths = [CONFIG_FILE, 'test_options.json', './test_options.json']
         
+        logger.info("🔧 Loading configuration...")
+        
         for config_path in config_paths:
             if os.path.exists(config_path):
-                logger.info(f"Loading config from: {config_path}")
+                logger.info(f"📁 Found config file: {config_path}")
                 with open(config_path, 'r') as f:
                     config = json.load(f)
-                    logger.info(f"Config loaded successfully. Has API key: {bool(config.get('api_key'))}")
-                    return config
+                    
+                # Log configuration details (safely)
+                api_key = config.get('api_key', '')
+                energy_id = config.get('energy_id', '')
+                metering_points = config.get('metering_points', [])
+                
+                logger.info(f"✅ Config loaded successfully from: {config_path}")
+                logger.info(f"🔑 API key present: {bool(api_key and api_key != 'your-test-api-key')}")
+                if api_key and api_key != 'your-test-api-key':
+                    logger.info(f"🔑 API key format: {api_key[:8]}...{api_key[-4:]} (length: {len(api_key)})")
+                else:
+                    logger.warning(f"🔑 API key value: '{api_key}' (placeholder or empty)")
+                    
+                logger.info(f"🆔 Energy ID present: {bool(energy_id and energy_id != 'your-test-energy-id')}")
+                if energy_id and energy_id != 'your-test-energy-id':
+                    logger.info(f"🆔 Energy ID: {energy_id}")
+                else:
+                    logger.warning(f"🆔 Energy ID value: '{energy_id}' (placeholder or empty)")
+                    
+                logger.info(f"📊 Metering points configured: {len(metering_points)}")
+                for i, mp in enumerate(metering_points):
+                    code = mp.get('code', '')
+                    name = mp.get('name', 'Unnamed')
+                    logger.info(f"📊 Meter {i+1}: '{name}' -> {code}")
+                    if code == 'LU000000000000000000000000000000':
+                        logger.warning(f"📊 Meter {i+1} uses placeholder code!")
+                
+                return config
         
-        logger.warning(f"No config file found in paths: {config_paths}")
+        logger.error(f"❌ No config file found in paths: {config_paths}")
+        logger.error("❌ This will cause the dashboard to show 'API credentials not configured'")
         return {
             'api_key': '',
             'energy_id': '',
@@ -61,43 +98,89 @@ def load_config():
             'display': {'theme': 'dark'}
         }
     except Exception as e:
-        logger.error(f"Error loading config: {e}")
+        logger.error(f"💥 Error loading config: {e}")
         return {}
 
 
 def make_api_request(url, headers=None, method='GET', data=None):
     """Make HTTP request using urllib with robust error handling"""
     try:
-        logger.info(f"Making API request to: {url}")
-        logger.info(f"Headers: {headers}")
+        logger.info(f"🌐 Making {method} request to Leneda API")
+        logger.info(f"🌐 URL: {url}")
+        logger.info(f"🌐 Headers: {dict(headers) if headers else 'None'}")
         
         req = Request(url, headers=headers or {}, method=method)
         if data:
             req.data = json.dumps(data).encode('utf-8')
+            logger.info(f"🌐 Request body: {json.dumps(data, indent=2)}")
         
+        logger.info(f"🌐 Sending request with {15}s timeout...")
         # Use shorter timeout to avoid hanging
         with urlopen(req, timeout=15) as response:
             response_data = response.read().decode('utf-8')
-            logger.info(f"API response status: {response.status}")
-            logger.debug(f"API response data: {response_data[:500]}...")  # Log first 500 chars
-            return json.loads(response_data)
+            logger.info(f"✅ API response status: {response.status}")
+            logger.info(f"✅ Response headers: {dict(response.headers)}")
+            logger.info(f"✅ Response size: {len(response_data)} characters")
+            
+            try:
+                parsed_data = json.loads(response_data)
+                
+                # Log response structure
+                if isinstance(parsed_data, dict):
+                    if 'items' in parsed_data:
+                        logger.info(f"📊 Response contains {len(parsed_data['items'])} data items")
+                        if parsed_data['items']:
+                            first_item = parsed_data['items'][0]
+                            logger.info(f"📊 First item sample: {json.dumps(first_item, indent=2)[:200]}...")
+                    elif 'aggregatedTimeSeries' in parsed_data:
+                        logger.info(f"📊 Response contains {len(parsed_data['aggregatedTimeSeries'])} aggregated items")
+                        if parsed_data['aggregatedTimeSeries']:
+                            first_item = parsed_data['aggregatedTimeSeries'][0]
+                            logger.info(f"📊 First aggregated item: {json.dumps(first_item, indent=2)}")
+                    else:
+                        logger.info(f"📊 Response structure: {list(parsed_data.keys()) if isinstance(parsed_data, dict) else type(parsed_data)}")
+                
+                logger.debug(f"📊 Full response: {response_data[:1000]}...")  # Log first 1000 chars
+                return parsed_data
+                
+            except json.JSONDecodeError as je:
+                logger.error(f"💥 JSON decode error: {je}")
+                logger.error(f"💥 Raw response: {response_data[:500]}...")
+                return None
+                
     except URLError as e:
-        logger.error(f"Network error for {url}: {e}")
-        logger.error(f"This could be a DNS resolution issue or network connectivity problem")
+        logger.error(f"🌐 Network error for {url}: {e}")
+        logger.error(f"🌐 This could be:")
+        logger.error(f"🌐   - DNS resolution issue (can't reach api.leneda.eu)")
+        logger.error(f"🌐   - Network connectivity problem")
+        logger.error(f"🌐   - Firewall blocking HTTPS requests")
         return None
     except HTTPError as e:
-        logger.error(f"HTTP error for {url}: {e.code} - {e.reason}")
+        logger.error(f"🌐 HTTP error for {url}: {e.code} - {e.reason}")
         try:
             error_body = e.read().decode('utf-8')
-            logger.error(f"Error response body: {error_body}")
-        except:
-            pass
+            logger.error(f"🌐 Error response body: {error_body}")
+            
+            if e.code == 401:
+                logger.error(f"🔑 401 Unauthorized - Check your credentials:")
+                logger.error(f"🔑   - API key might be invalid or expired")
+                logger.error(f"🔑   - Energy ID might be wrong")
+                logger.error(f"🔑   - Account might not have API access")
+            elif e.code == 404:
+                logger.error(f"📊 404 Not Found - Check your metering point code")
+            elif e.code == 429:
+                logger.error(f"⏱️ 429 Rate Limited - Too many requests, slow down")
+                
+        except Exception as ee:
+            logger.error(f"🌐 Could not read error body: {ee}")
         return None
     except json.JSONDecodeError as e:
-        logger.error(f"JSON decode error: {e}")
+        logger.error(f"💥 JSON decode error: {e}")
         return None
     except Exception as e:
-        logger.error(f"Unexpected error for {url}: {e}")
+        logger.error(f"💥 Unexpected error for {url}: {type(e).__name__}: {e}")
+        import traceback
+        logger.error(f"💥 Traceback: {traceback.format_exc()}")
         return None
 
 
@@ -145,7 +228,7 @@ class LenedaHandler(BaseHTTPRequestHandler):
             # Simple health check - no external dependencies
             self.send_json({
                 'status': 'healthy',
-                'version': '1.0.2',
+                'version': '1.0.3',
                 'timestamp': datetime.now().isoformat()
             })
         
@@ -187,14 +270,19 @@ class LenedaHandler(BaseHTTPRequestHandler):
     
     def handle_metering_data(self):
         """Handle metering data request"""
+        logger.info("📊 === METERING DATA REQUEST ===")
+        
         config = load_config()
         api_key = config.get('api_key', '')
         energy_id = config.get('energy_id', '')
         
-        logger.info(f"Handling metering data request. API key present: {bool(api_key)}")
+        logger.info(f"📊 Handling metering data request")
+        logger.info(f"📊 API key present: {bool(api_key and api_key != 'your-test-api-key')}")
+        logger.info(f"📊 Energy ID present: {bool(energy_id and energy_id != 'your-test-energy-id')}")
         
         if not api_key or not energy_id:
-            logger.error("API credentials not configured")
+            logger.error("❌ API credentials not configured")
+            logger.error("❌ Dashboard will show 'API credentials not configured'")
             self.send_json({'error': 'API credentials not configured'}, 400)
             return
         
@@ -205,8 +293,14 @@ class LenedaHandler(BaseHTTPRequestHandler):
         start_date = query.get('start_date', [None])[0]
         end_date = query.get('end_date', [None])[0]
         
+        logger.info(f"📊 Request parameters:")
+        logger.info(f"📊   - Metering point: {metering_point}")
+        logger.info(f"📊   - OBIS code: {obis_code}")
+        logger.info(f"📊   - Start date: {start_date}")
+        logger.info(f"📊   - End date: {end_date}")
+        
         if not metering_point:
-            logger.error("Missing metering_point parameter")
+            logger.error("❌ Missing metering_point parameter")
             self.send_json({'error': 'Missing metering_point parameter'}, 400)
             return
         
@@ -219,8 +313,15 @@ class LenedaHandler(BaseHTTPRequestHandler):
             start_date = start_dt.strftime('%Y-%m-%dT%H:%M:%SZ')
             end_date = end_dt.strftime('%Y-%m-%dT%H:%M:%SZ')
             
-        logger.info(f"Requesting data for period: {start_date} to {end_date}")
-        logger.info(f"Metering point: {metering_point}, OBIS code: {obis_code}")
+            logger.info(f"📊 Using default date range (yesterday):")
+            logger.info(f"📊   - Start: {start_date}")
+            logger.info(f"📊   - End: {end_date}")
+            logger.info(f"📊 NOTE: Leneda has 1-day delay, requesting yesterday's data")
+            
+        logger.info(f"📊 Final request details:")
+        logger.info(f"📊   - Period: {start_date} to {end_date}")
+        logger.info(f"📊   - Metering point: {metering_point}")
+        logger.info(f"📊   - OBIS code: {obis_code}")
         
         # Build URL with proper encoding
         base_url = f"{LENEDA_API_BASE}/metering-points/{quote(metering_point)}/time-series"
@@ -233,6 +334,7 @@ class LenedaHandler(BaseHTTPRequestHandler):
         }
         
         url = f"{base_url}?{urlencode(params)}"
+        logger.info(f"📊 Encoded URL: {url}")
         
         headers = {
             'X-API-KEY': api_key,
@@ -244,10 +346,19 @@ class LenedaHandler(BaseHTTPRequestHandler):
         data = make_api_request(url, headers)
         
         if data:
-            logger.info(f"Successfully fetched {len(data.get('items', []))} data points")
+            items_count = len(data.get('items', []))
+            logger.info(f"✅ Successfully fetched {items_count} data points")
+            if items_count == 0:
+                logger.warning(f"⚠️ No data points returned - this might be normal if:")
+                logger.warning(f"⚠️   - No consumption during this period")
+                logger.warning(f"⚠️   - Data not yet available (1-day delay)")
+                logger.warning(f"⚠️   - Weekend/holiday when meter doesn't report")
+            else:
+                logger.info(f"📊 Data sample: {json.dumps(data.get('items', [])[:2], indent=2)}")
             self.send_json(data)
         else:
-            logger.error("Failed to fetch data from Leneda API")
+            logger.error("❌ Failed to fetch data from Leneda API")
+            logger.error("❌ Dashboard will show 'Failed to fetch data from Leneda API'")
             self.send_json({'error': 'Failed to fetch data from Leneda API. Check logs for details.'}, 500)
     
     def handle_aggregated_data(self):
@@ -427,14 +538,25 @@ def main():
     logger.info("=" * 60)
     logger.info("  Leneda Energy Dashboard - Starting Server")
     logger.info("=" * 60)
-    logger.info("Version: 1.0.2")
+    logger.info("Version: 1.0.3")
     logger.info("License: GPL-3.0")
     logger.info(f"Server listening on: http://0.0.0.0:8099")
     logger.info(f"Static files: {STATIC_DIR}")
     logger.info(f"Config file: {CONFIG_FILE}")
+    logger.info(f"Leneda API base: {LENEDA_API_BASE}")
+    logger.info("=" * 60)
+    logger.info("🔧 TROUBLESHOOTING TIPS:")
+    logger.info("🔧 - Check logs for '✅ Config loaded successfully'")
+    logger.info("🔧 - Look for '✅ Successfully fetched X data points'")
+    logger.info("🔧 - Remember: Leneda has 1-day data delay")
+    logger.info("🔧 - If empty dashboard: check credentials & wait 24h")
     logger.info("=" * 60)
     logger.info("READY - No external dependencies required!")
     logger.info("=" * 60)
+    
+    # Load and log initial configuration
+    logger.info("🔧 Loading initial configuration for validation...")
+    config = load_config()
     
     try:
         httpd.serve_forever()
