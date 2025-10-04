@@ -5,7 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.3] - 2025-10-04
+## [1.0.5] - 2025-10-04
+
+### Fixed
+- **Critical**: Fixed frontend caching issue preventing config updates from reaching the GUI
+- **Cache busting**: Added version parameters to CSS and JS files to force browser reload
+- **Version consistency**: All files now show consistent v1.0.5 version numbers
+
+### Added
+- **Frontend debugging**: Enhanced console logging to track file loading and API calls
+- **Health check**: Added connectivity test before config loading
+- **Version tracking**: Added version logging in HTML and JavaScript files
+
+### Notes
+- This version specifically addresses the "❌ Not Configured" issue in the GUI
+- The config API was working correctly, but cached frontend files weren't updating
+- Force refresh (Ctrl+F5) may be needed after this update
+
+## [1.0.4] - 2025-10-04
 
 ### Added
 - **Comprehensive debug logging** with emoji indicators for easy log scanning

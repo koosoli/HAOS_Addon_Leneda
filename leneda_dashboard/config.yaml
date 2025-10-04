@@ -1,7 +1,7 @@
 name: "Leneda Energy Dashboard"
-version: "1.0.4"
+version: "1.0.5"
 slug: leneda_dashboard
-description: "Advanced energy dashboard for Leneda smart meters with comprehensive debugging. Fixed config API and added frontend debugging."
+description: "Advanced energy dashboard for Leneda smart meters with comprehensive debugging. Fixed frontend caching issues and enhanced debugging."
 url: "https://github.com/koosoli/HAOS_Addon_Leneda"
 arch:
   - aarch64

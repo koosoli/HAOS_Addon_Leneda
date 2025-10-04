@@ -1,7 +1,7 @@
 // Leneda Energy Dashboard - JavaScript
-// Version: 1.0.4
+// Version: 1.0.5
 
-console.log('🚀 Loading Leneda Dashboard JavaScript v1.0.4');
+console.log('🚀 Loading Leneda Dashboard JavaScript v1.0.5');
 
 let config = {};
 let charts = {};
