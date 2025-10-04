@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Leneda Energy Dashboard - Backend Server (Pure Python stdlib)
-Version: 1.0.9
+Version: 1.1.0
 License: GPL-3.0
 
 NO EXTERNAL DEPENDENCIES - Uses only Python standard library
@@ -610,7 +610,7 @@ def main():
     logger.info("=" * 60)
     logger.info("  Leneda Energy Dashboard - Starting Server")
     logger.info("=" * 60)
-    logger.info("Version: 1.0.9")
+    logger.info("Version: 1.1.0")
     logger.info("License: GPL-3.0")
     logger.info(f"Server listening on: http://0.0.0.0:8099")
     logger.info(f"Static files: {STATIC_DIR}")

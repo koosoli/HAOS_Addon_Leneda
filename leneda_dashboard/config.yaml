@@ -1,5 +1,5 @@
 name: "Leneda Energy Dashboard"
-version: "1.0.9"
+version: "1.1.0"
 slug: leneda_dashboard
 description: "Advanced energy dashboard with enhanced connection debugging. Traces frontend-backend communication issues."
 url: "https://github.com/koosoli/HAOS_Addon_Leneda"

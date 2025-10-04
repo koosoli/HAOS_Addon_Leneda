@@ -449,7 +449,9 @@ async function updateDashboardStats() {
         
         if (response.ok) {
             const data = await response.json();
+            console.log('🔧 Yesterday consumption response:', data);
             const yesterdayUsage = data.aggregatedTimeSeries?.[0]?.value || 0;
+            console.log('🔧 Yesterday usage value:', yesterdayUsage);
             document.getElementById('todayUsage').textContent = `${yesterdayUsage.toFixed(2)} kWh`;
         }
         
@@ -460,7 +462,9 @@ async function updateDashboardStats() {
         
         if (weekResponse.ok) {
             const weekData = await weekResponse.json();
+            console.log('🔧 Week consumption response:', weekData);
             const weekUsage = weekData.aggregatedTimeSeries?.[0]?.value || 0;
+            console.log('🔧 Week usage value:', weekUsage);
             document.getElementById('weekConsumption').textContent = `${weekUsage.toFixed(2)} kWh`;
         }
         
@@ -471,7 +475,9 @@ async function updateDashboardStats() {
         
         if (monthResponse.ok) {
             const monthData = await monthResponse.json();
+            console.log('🔧 Month consumption response:', monthData);
             const monthUsage = monthData.aggregatedTimeSeries?.[0]?.value || 0;
+            console.log('🔧 Month usage value:', monthUsage);
             document.getElementById('monthConsumption').textContent = `${monthUsage.toFixed(2)} kWh`;
             
             // Estimate cost
