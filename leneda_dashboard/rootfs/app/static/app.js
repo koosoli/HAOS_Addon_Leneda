@@ -1,24 +1,33 @@
 // Leneda Energy Dashboard - JavaScript
-// Version: 1.0.0
+// Version: 1.0.4
+
+console.log('🚀 Loading Leneda Dashboard JavaScript v1.0.4');
 
 let config = {};
 let charts = {};
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Leneda Dashboard initializing...');
+    console.log('🚀 Leneda Dashboard initializing...');
+    console.log('🚀 Current URL:', window.location.href);
+    console.log('🚀 Setting up application...');
     
     // Set up event listeners
     setupEventListeners();
     
     // Load configuration
+    console.log('🚀 About to load configuration...');
     loadConfiguration();
     
     // Initialize charts
+    console.log('🚀 Initializing charts...');
     initializeCharts();
     
     // Start auto-refresh
+    console.log('🚀 Starting auto-refresh...');
     startAutoRefresh();
+    
+    console.log('🚀 Initialization complete!');
 });
 
 // Event Listeners
@@ -89,9 +98,37 @@ function toggleTheme() {
 async function loadConfiguration() {
     try {
         console.log('🔧 Loading configuration from /api/config...');
-        const response = await fetch('/api/config');
+        
+        // First test if we can reach the server at all
+        console.log('🔧 Testing server connectivity...');
+        try {
+            const healthResponse = await fetch('/api/health');
+            console.log('🔧 Health check response status:', healthResponse.status);
+            if (healthResponse.ok) {
+                const healthData = await healthResponse.json();
+                console.log('🔧 Health check data:', healthData);
+            }
+        } catch (healthError) {
+            console.error('❌ Health check failed:', healthError);
+        }
+        
+        // Now try to get the config
+        const response = await fetch('/api/config', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'Cache-Control': 'no-cache'
+            }
+        });
+        
+        console.log('🔧 Config response status:', response.status);
+        console.log('🔧 Config response headers:', [...response.headers.entries()]);
+        
         if (response.ok) {
-            config = await response.json();
+            const responseText = await response.text();
+            console.log('🔧 Raw config response:', responseText);
+            
+            config = JSON.parse(responseText);
             console.log('✅ Configuration loaded:', config);
             console.log('🔧 API key status:', config.has_api_key);
             console.log('🔧 Energy ID status:', config.has_energy_id);
@@ -109,10 +146,13 @@ async function loadConfiguration() {
             }
         } else {
             console.error('❌ Failed to load config, status:', response.status);
+            const errorText = await response.text();
+            console.error('❌ Error response:', errorText);
             showStatus('Failed to load configuration', 'error');
         }
     } catch (error) {
         console.error('❌ Error loading configuration:', error);
+        console.error('❌ Error details:', error.message, error.stack);
         showStatus('Failed to load configuration', 'error');
     }
 }

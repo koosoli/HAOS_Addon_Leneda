@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leneda Energy Dashboard</title>
+    <title>Leneda Energy Dashboard v1.0.4</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=1.0.4">
+    <!-- Version 1.0.4 - Enhanced debugging -->
 </head>
 <body class="dark-theme">
     <div class="container">
@@ -257,10 +258,13 @@
 
         <!-- Footer -->
         <footer class="footer">
-            <p>Leneda Energy Dashboard v0.1.0 | Made by Olivier Koos</p>
+            <p>Leneda Energy Dashboard v1.0.4 | Made by Olivier Koos</p>
         </footer>
     </div>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=1.0.4"></script>
+    <script>
+        console.log('🚀 HTML v1.0.4 loaded at:', new Date().toISOString());
+    </script>
 </body>
 </html>
