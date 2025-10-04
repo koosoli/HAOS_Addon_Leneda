@@ -422,7 +422,7 @@ async function updateLiveChart() {
                 document.getElementById('currentConsumption').textContent = `${peakValue.toFixed(2)} kW`;
             }
         } else {
-            _LOGGER.error('Failed to fetch metering data');
+            console.error('Failed to fetch metering data');
             showStatus('No data available. Check configuration.', 'error');
         }
     } catch (error) {

@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, quote, urlencode
 import mimetypes
 
 # Configure logging
@@ -33,18 +33,25 @@ STATIC_DIR = '/app/static'
 def load_config():
     """Load addon configuration"""
     try:
-        if os.path.exists(CONFIG_FILE):
-            with open(CONFIG_FILE, 'r') as f:
-                return json.load(f)
-        else:
-            logger.warning(f"Config file not found: {CONFIG_FILE}")
-            return {
-                'api_key': '',
-                'energy_id': '',
-                'metering_points': [],
-                'billing': {},
-                'display': {'theme': 'dark'}
-            }
+        # Try production path first, then test path
+        config_paths = [CONFIG_FILE, 'test_options.json', './test_options.json']
+        
+        for config_path in config_paths:
+            if os.path.exists(config_path):
+                logger.info(f"Loading config from: {config_path}")
+                with open(config_path, 'r') as f:
+                    config = json.load(f)
+                    logger.info(f"Config loaded successfully. Has API key: {bool(config.get('api_key'))}")
+                    return config
+        
+        logger.warning(f"No config file found in paths: {config_paths}")
+        return {
+            'api_key': '',
+            'energy_id': '',
+            'metering_points': [],
+            'billing': {},
+            'display': {'theme': 'dark'}
+        }
     except Exception as e:
         logger.error(f"Error loading config: {e}")
         return {}
@@ -53,22 +60,36 @@ def load_config():
 def make_api_request(url, headers=None, method='GET', data=None):
     """Make HTTP request using urllib with robust error handling"""
     try:
+        logger.info(f"Making API request to: {url}")
+        logger.info(f"Headers: {headers}")
+        
         req = Request(url, headers=headers or {}, method=method)
         if data:
             req.data = json.dumps(data).encode('utf-8')
         
         # Use shorter timeout to avoid hanging
-        with urlopen(req, timeout=10) as response:
-            return json.loads(response.read().decode('utf-8'))
+        with urlopen(req, timeout=15) as response:
+            response_data = response.read().decode('utf-8')
+            logger.info(f"API response status: {response.status}")
+            logger.debug(f"API response data: {response_data[:500]}...")  # Log first 500 chars
+            return json.loads(response_data)
     except URLError as e:
-        # Log but don't crash on DNS/network errors
-        logger.warning(f"Network error for {url}: {e}")
+        logger.error(f"Network error for {url}: {e}")
+        logger.error(f"This could be a DNS resolution issue or network connectivity problem")
         return None
     except HTTPError as e:
         logger.error(f"HTTP error for {url}: {e.code} - {e.reason}")
+        try:
+            error_body = e.read().decode('utf-8')
+            logger.error(f"Error response body: {error_body}")
+        except:
+            pass
+        return None
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON decode error: {e}")
         return None
     except Exception as e:
-        logger.error(f"Unexpected error: {e}")
+        logger.error(f"Unexpected error for {url}: {e}")
         return None
 
 
@@ -162,7 +183,10 @@ class LenedaHandler(BaseHTTPRequestHandler):
         api_key = config.get('api_key', '')
         energy_id = config.get('energy_id', '')
         
+        logger.info(f"Handling metering data request. API key present: {bool(api_key)}")
+        
         if not api_key or not energy_id:
+            logger.error("API credentials not configured")
             self.send_json({'error': 'API credentials not configured'}, 400)
             return
         
@@ -174,32 +198,49 @@ class LenedaHandler(BaseHTTPRequestHandler):
         end_date = query.get('end_date', [None])[0]
         
         if not metering_point:
+            logger.error("Missing metering_point parameter")
             self.send_json({'error': 'Missing metering_point parameter'}, 400)
             return
         
-        # Default to last 24 hours if no dates provided
+        # Default to yesterday (Leneda data is not real-time)
         if not start_date or not end_date:
-            end_dt = datetime.now()
-            start_dt = end_dt - timedelta(days=1)
+            # Get yesterday's data since Leneda data is delayed
+            yesterday = datetime.now() - timedelta(days=1)
+            start_dt = yesterday.replace(hour=0, minute=0, second=0, microsecond=0)
+            end_dt = yesterday.replace(hour=23, minute=59, second=59, microsecond=0)
             start_date = start_dt.strftime('%Y-%m-%dT%H:%M:%SZ')
             end_date = end_dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+            
+        logger.info(f"Requesting data for period: {start_date} to {end_date}")
+        logger.info(f"Metering point: {metering_point}, OBIS code: {obis_code}")
         
-        # Build URL with query parameters
-        url = f"{LENEDA_API_BASE}/metering-points/{metering_point}/time-series"
-        url += f"?startDateTime={start_date}&endDateTime={end_date}&obisCode={obis_code}"
+        # Build URL with proper encoding
+        base_url = f"{LENEDA_API_BASE}/metering-points/{quote(metering_point)}/time-series"
+        
+        # Properly encode query parameters
+        params = {
+            'startDateTime': start_date,
+            'endDateTime': end_date,
+            'obisCode': obis_code
+        }
+        
+        url = f"{base_url}?{urlencode(params)}"
         
         headers = {
             'X-API-KEY': api_key,
             'X-ENERGY-ID': energy_id,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
         }
         
         data = make_api_request(url, headers)
         
         if data:
+            logger.info(f"Successfully fetched {len(data.get('items', []))} data points")
             self.send_json(data)
         else:
-            self.send_json({'error': 'Failed to fetch data from Leneda API'}, 500)
+            logger.error("Failed to fetch data from Leneda API")
+            self.send_json({'error': 'Failed to fetch data from Leneda API. Check logs for details.'}, 500)
     
     def handle_aggregated_data(self):
         """Handle aggregated data request"""
@@ -207,7 +248,10 @@ class LenedaHandler(BaseHTTPRequestHandler):
         api_key = config.get('api_key', '')
         energy_id = config.get('energy_id', '')
         
+        logger.info(f"Handling aggregated data request. API key present: {bool(api_key)}")
+        
         if not api_key or not energy_id:
+            logger.error("API credentials not configured")
             self.send_json({'error': 'API credentials not configured'}, 400)
             return
         
@@ -220,33 +264,50 @@ class LenedaHandler(BaseHTTPRequestHandler):
         aggregation_level = query.get('aggregation_level', ['Day'])[0]
         
         if not metering_point:
+            logger.error("Missing metering_point parameter")
             self.send_json({'error': 'Missing metering_point parameter'}, 400)
             return
         
-        # Default to last 30 days
+        # Default to last 30 days ending yesterday
         if not start_date or not end_date:
-            end_dt = datetime.now()
+            yesterday = datetime.now() - timedelta(days=1)
+            end_dt = yesterday.replace(hour=23, minute=59, second=59)
             start_dt = end_dt - timedelta(days=30)
             start_date = start_dt.strftime('%Y-%m-%d')
             end_date = end_dt.strftime('%Y-%m-%d')
         
-        # Build URL
-        url = f"{LENEDA_API_BASE}/metering-points/{metering_point}/time-series/aggregated"
-        url += f"?startDate={start_date}&endDate={end_date}&obisCode={obis_code}"
-        url += f"&aggregationLevel={aggregation_level}&transformationMode=Accumulation"
+        logger.info(f"Requesting aggregated data for period: {start_date} to {end_date}")
+        logger.info(f"Metering point: {metering_point}, OBIS: {obis_code}, Level: {aggregation_level}")
+        
+        # Build URL with proper encoding
+        base_url = f"{LENEDA_API_BASE}/metering-points/{quote(metering_point)}/time-series/aggregated"
+        
+        params = {
+            'startDate': start_date,
+            'endDate': end_date,
+            'obisCode': obis_code,
+            'aggregationLevel': aggregation_level,
+            'transformationMode': 'Accumulation'
+        }
+        
+        url = f"{base_url}?{urlencode(params)}"
         
         headers = {
             'X-API-KEY': api_key,
             'X-ENERGY-ID': energy_id,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
         }
         
         data = make_api_request(url, headers)
         
         if data:
+            items_count = len(data.get('aggregatedTimeSeries', []))
+            logger.info(f"Successfully fetched {items_count} aggregated data points")
             self.send_json(data)
         else:
-            self.send_json({'error': 'Failed to fetch aggregated data'}, 500)
+            logger.error("Failed to fetch aggregated data from Leneda API")
+            self.send_json({'error': 'Failed to fetch aggregated data. Check logs for details.'}, 500)
     
     def handle_calculate_invoice(self):
         """Handle invoice calculation"""
@@ -255,6 +316,8 @@ class LenedaHandler(BaseHTTPRequestHandler):
         api_key = config.get('api_key', '')
         energy_id = config.get('energy_id', '')
         
+        logger.info(f"Handling invoice calculation. API key present: {bool(api_key)}")
+        
         # Parse query parameters
         query = parse_qs(urlparse(self.path).query)
         metering_point = query.get('metering_point', [None])[0]
@@ -262,25 +325,38 @@ class LenedaHandler(BaseHTTPRequestHandler):
         end_date = query.get('end_date', [None])[0]
         
         if not metering_point or not start_date or not end_date:
+            logger.error("Missing required parameters for invoice calculation")
             self.send_json({
                 'error': 'Missing required parameters: metering_point, start_date, end_date'
             }, 400)
             return
         
-        # Fetch consumption data
-        url = f"{LENEDA_API_BASE}/metering-points/{metering_point}/time-series/aggregated"
-        url += f"?startDate={start_date}&endDate={end_date}"
-        url += "&obisCode=1-1:1.29.0&aggregationLevel=Infinite&transformationMode=Accumulation"
+        logger.info(f"Calculating invoice for period: {start_date} to {end_date}")
+        
+        # Fetch consumption data with proper URL encoding
+        base_url = f"{LENEDA_API_BASE}/metering-points/{quote(metering_point)}/time-series/aggregated"
+        
+        params = {
+            'startDate': start_date,
+            'endDate': end_date,
+            'obisCode': '1-1:1.29.0',
+            'aggregationLevel': 'Infinite',
+            'transformationMode': 'Accumulation'
+        }
+        
+        url = f"{base_url}?{urlencode(params)}"
         
         headers = {
             'X-API-KEY': api_key,
             'X-ENERGY-ID': energy_id,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
         }
         
         data = make_api_request(url, headers)
         
         if not data:
+            logger.error("Failed to fetch consumption data for invoice")
             self.send_json({'error': 'Failed to fetch consumption data'}, 500)
             return
         
